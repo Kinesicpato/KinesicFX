@@ -862,7 +862,6 @@ function renderEditTable(){
   });
 }
 // ── TICKER AUTOCOMPLETE ───────────────────────────────────────────────────────
-// FMP sector → our sector map
 const FMP_SECTOR_MAP={
   'Technology':'Technology','Financial Services':'Financials','Financial':'Financials',
   'Healthcare':'Healthcare','Energy':'Energy','Communication Services':'Telecom',
@@ -872,6 +871,23 @@ const FMP_SECTOR_MAP={
 };
 const CRYPTO_NAMES={BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BNB:'BNB',ADA:'Cardano',DOT:'Polkadot',AVAX:'Avalanche',MATIC:'Polygon',LINK:'Chainlink',UNI:'Uniswap',XRP:'XRP',DOGE:'Dogecoin',LTC:'Litecoin'};
 
+// Sector manual por ticker conocido (fallback cuando API no trae sector)
+const KNOWN_SECTORS={
+  AAPL:'Technology',MSFT:'Technology',GOOGL:'Technology',GOOG:'Technology',META:'Technology',
+  NVDA:'Technology',AMD:'Technology',INTC:'Technology',CRM:'Technology',ORCL:'Technology',
+  TSLA:'Technology',AMZN:'Technology',NFLX:'Technology',ADBE:'Technology',PYPL:'Technology',
+  JPM:'Financials',BAC:'Financials',WFC:'Financials',GS:'Financials',MS:'Financials',
+  V:'Financials',MA:'Financials',AXP:'Financials',BLK:'Financials',C:'Financials',
+  JNJ:'Healthcare',UNH:'Healthcare',PFE:'Healthcare',ABBV:'Healthcare',MRK:'Healthcare',
+  LLY:'Healthcare',TMO:'Healthcare',ABT:'Healthcare',DHR:'Healthcare',BMY:'Healthcare',
+  XOM:'Energy',CVX:'Energy',COP:'Energy',SLB:'Energy',EOG:'Energy',
+  VZ:'Telecom',T:'Telecom',TMUS:'Telecom',CMCSA:'Telecom',CHTR:'Telecom',
+  WMT:'Consumer',COST:'Consumer',TGT:'Consumer',HD:'Consumer',LOW:'Consumer',
+  MCD:'Consumer',SBUX:'Consumer',NKE:'Consumer',PG:'Consumer',KO:'Consumer',PEP:'Consumer',
+  BA:'Industrials',CAT:'Industrials',GE:'Industrials',MMM:'Industrials',HON:'Industrials',
+  SPY:'Technology',QQQ:'Technology',VTI:'Technology',VOO:'Technology',
+};
+
 let tickerLookupTimer=null;
 async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
   const ticker=val.trim().toUpperCase();
@@ -879,7 +895,7 @@ async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
   const status=document.getElementById(statusId);
   if(ticker.length<1){status.textContent='';return;}
 
-  // instant crypto check
+  // Cripto instantáneo sin API
   if(CRYPTO_NAMES[ticker]){
     document.getElementById(nameId).value=CRYPTO_NAMES[ticker];
     document.getElementById(typeId).value='crypto';
@@ -888,34 +904,63 @@ async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
     return;
   }
 
-  // debounce 600ms before calling API
+  // Sector conocido instantáneo
+  if(KNOWN_SECTORS[ticker]){
+    const sel=document.getElementById(sectorId);
+    for(let i=0;i<sel.options.length;i++){
+      if(sel.options[i].value===KNOWN_SECTORS[ticker]){sel.selectedIndex=i;break;}
+    }
+  }
+
+  if(ticker.length<2){status.textContent='';return;}
+
+  // Debounce 700ms
   status.style.color='var(--cyan)';status.textContent='Buscando…';
   tickerLookupTimer=setTimeout(async()=>{
+    let found=false;
+
+    // Intento 1: FMP quote (incluye nombre, gratis)
     try{
-      const r=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
+      const r=await fetch(`https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${FMP_KEY}`);
       const d=await r.json();
-      if(d&&d[0]&&d[0].companyName){
-        const p=d[0];
-        document.getElementById(nameId).value=p.companyName||ticker;
+      if(Array.isArray(d)&&d[0]&&d[0].name){
+        const q=d[0];
+        document.getElementById(nameId).value=q.name;
         document.getElementById(typeId).value='stock';
-        const mappedSector=FMP_SECTOR_MAP[p.sector]||p.sector||'Technology';
-        // set sector select
+        if(q.price&&!document.getElementById(costId).value)
+          document.getElementById(costId).value=q.price.toFixed(2);
+        // sector desde mapa conocido o genérico
+        const sec=KNOWN_SECTORS[ticker]||'Technology';
         const sel=document.getElementById(sectorId);
         for(let i=0;i<sel.options.length;i++){
-          if(sel.options[i].value===mappedSector){sel.selectedIndex=i;break;}
+          if(sel.options[i].value===sec){sel.selectedIndex=i;break;}
         }
-        // pre-fill current price as cost hint
-        if(p.price&&!document.getElementById(costId).value)
-          document.getElementById(costId).value=p.price.toFixed(2);
         status.style.color='var(--green)';
-        status.textContent=`✓ ${p.companyName} — ${p.exchange||''}`;
-      } else {
-        status.style.color='var(--amber)';status.textContent='No encontrado — ingresa nombre manualmente';
+        status.textContent=`✓ ${q.name}  |  Precio: $${q.price}`;
+        found=true;
       }
-    }catch(e){
-      status.style.color='var(--amber)';status.textContent='Error buscando ticker';
+    }catch(e){}
+
+    // Intento 2: FMP search endpoint
+    if(!found){
+      try{
+        const r2=await fetch(`https://financialmodelingprep.com/api/v3/search?query=${ticker}&limit=1&apikey=${FMP_KEY}`);
+        const d2=await r2.json();
+        if(Array.isArray(d2)&&d2[0]&&d2[0].name){
+          document.getElementById(nameId).value=d2[0].name;
+          document.getElementById(typeId).value='stock';
+          status.style.color='var(--green)';
+          status.textContent=`✓ ${d2[0].name}  |  ${d2[0].stockExchange||''}`;
+          found=true;
+        }
+      }catch(e){}
     }
-  },600);
+
+    if(!found){
+      status.style.color='var(--amber)';
+      status.textContent='No encontrado — ingresa el nombre manualmente';
+    }
+  },700);
 }
 
 // ── RENTABILIDAD AUTOMÁTICA MÓDULOS ──────────────────────────────────────────
