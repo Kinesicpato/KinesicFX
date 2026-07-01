@@ -271,15 +271,24 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
     <div class="edit-section border-accent">
       <div class="edit-section-title col-accent">✚ Agregar Acción / Cripto</div>
       <div class="edit-grid">
-        <div class="edit-field"><label>Ticker</label><input id="e-ticker" placeholder="AAPL"/></div>
-        <div class="edit-field"><label>Nombre</label><input id="e-name" placeholder="Apple Inc."/></div>
+        <div class="edit-field" style="position:relative">
+          <label>Ticker</label>
+          <input id="e-ticker" placeholder="AAPL" autocomplete="off"
+            oninput="onTickerInput(this.value,'e-name','e-cost','e-type','e-sector','e-lookup-status')"
+            style="text-transform:uppercase"/>
+          <div id="e-lookup-status" style="font-size:9px;margin-top:3px;height:13px;color:var(--cyan)"></div>
+        </div>
+        <div class="edit-field">
+          <label>Nombre <span style="color:var(--cyan);font-size:9px">(auto)</span></label>
+          <input id="e-name" placeholder="Se completa automáticamente"/>
+        </div>
         <div class="edit-field"><label>Cantidad</label><input id="e-shares" type="number" step="any" placeholder="10"/></div>
         <div class="edit-field"><label>Costo Prom USD</label><input id="e-cost" type="number" step="any" placeholder="150.00"/></div>
         <div class="edit-field"><label>Div/Acción USD</label><input id="e-div" type="number" step="any" placeholder="0.00"/></div>
-        <div class="edit-field"><label>Tipo</label>
+        <div class="edit-field"><label>Tipo <span style="color:var(--cyan);font-size:9px">(auto)</span></label>
           <select id="e-type"><option value="stock">Stock</option><option value="crypto">Crypto</option></select>
         </div>
-        <div class="edit-field"><label>Sector</label>
+        <div class="edit-field"><label>Sector <span style="color:var(--cyan);font-size:9px">(auto)</span></label>
           <select id="e-sector">
             <option>Technology</option><option>Financials</option><option>Healthcare</option>
             <option>Energy</option><option>Telecom</option><option>Crypto</option>
@@ -315,9 +324,13 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
     <div class="edit-section border-green">
       <div class="edit-section-title col-green">🏦 APV — Ahorro Previsional Voluntario</div>
       <div class="module-edit-grid">
-        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="apv-valor" placeholder="0.00"/></div>
-        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="apv-costo" placeholder="0.00"/></div>
-        <div class="module-field"><label>Rentabilidad Anual (%)</label><input type="number" step="any" id="apv-rent" placeholder="5.5"/></div>
+        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="apv-costo" placeholder="0.00" oninput="calcModuleRent('apv')"/></div>
+        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="apv-valor" placeholder="0.00" oninput="calcModuleRent('apv')"/></div>
+        <div class="module-field">
+          <label>Rentabilidad <span style="color:var(--green);font-size:9px">(auto %)</span></label>
+          <input type="number" step="any" id="apv-rent" placeholder="Se calcula solo" readonly
+            style="color:var(--green);font-weight:700;cursor:default"/>
+        </div>
         <div class="module-field"><label>Descripción</label><input type="text" id="apv-desc" placeholder="Fondo A, B, C..."/></div>
       </div>
       <button class="btn-save-mod green" onclick="saveModule('apv')">✓ Guardar APV</button>
@@ -328,9 +341,13 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
     <div class="edit-section border-purple">
       <div class="edit-section-title col-purple">🧠 Racional</div>
       <div class="module-edit-grid">
-        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="rac-valor" placeholder="0.00"/></div>
-        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="rac-costo" placeholder="0.00"/></div>
-        <div class="module-field"><label>Rentabilidad Anual (%)</label><input type="number" step="any" id="rac-rent" placeholder="0.0"/></div>
+        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="rac-costo" placeholder="0.00" oninput="calcModuleRent('rac')"/></div>
+        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="rac-valor" placeholder="0.00" oninput="calcModuleRent('rac')"/></div>
+        <div class="module-field">
+          <label>Rentabilidad <span style="color:var(--purple);font-size:9px">(auto %)</span></label>
+          <input type="number" step="any" id="rac-rent" placeholder="Se calcula solo" readonly
+            style="color:var(--purple);font-weight:700;cursor:default"/>
+        </div>
         <div class="module-field"><label>Descripción</label><input type="text" id="rac-desc" placeholder="Estrategia, instrumento..."/></div>
       </div>
       <button class="btn-save-mod purple" onclick="saveModule('rac')">✓ Guardar Racional</button>
@@ -341,9 +358,13 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
     <div class="edit-section border-amber">
       <div class="edit-section-title col-amber">⚡ Trading</div>
       <div class="module-edit-grid">
-        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="trd-valor" placeholder="0.00"/></div>
-        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="trd-costo" placeholder="0.00"/></div>
-        <div class="module-field"><label>Rentabilidad Anual (%)</label><input type="number" step="any" id="trd-rent" placeholder="0.0"/></div>
+        <div class="module-field"><label>Capital Aportado (USD)</label><input type="number" step="any" id="trd-costo" placeholder="0.00" oninput="calcModuleRent('trd')"/></div>
+        <div class="module-field"><label>Valor Actual (USD)</label><input type="number" step="any" id="trd-valor" placeholder="0.00" oninput="calcModuleRent('trd')"/></div>
+        <div class="module-field">
+          <label>Rentabilidad <span style="color:var(--amber);font-size:9px">(auto %)</span></label>
+          <input type="number" step="any" id="trd-rent" placeholder="Se calcula solo" readonly
+            style="color:var(--amber);font-weight:700;cursor:default"/>
+        </div>
         <div class="module-field"><label>Descripción</label><input type="text" id="trd-desc" placeholder="Cuenta, broker, estrategia..."/></div>
       </div>
       <button class="btn-save-mod amber" onclick="saveModule('trd')">✓ Guardar Trading</button>
@@ -831,15 +852,87 @@ function renderEditTable(){
       <td><button class="btn-del-row" onclick="removePosition(${p.id})">✕ Eliminar</button></td>
     </tr>`;
   }).join('');
-  // populate module inputs
+  // populate module inputs and recalculate rent display
   ['apv','rac','trd'].forEach(k=>{
     const m=modules[k];
     document.getElementById(k+'-valor').value=m.valor||'';
     document.getElementById(k+'-costo').value=m.costo||'';
-    document.getElementById(k+'-rent').value=m.rent||'';
     document.getElementById(k+'-desc').value=m.desc||'';
+    calcModuleRent(k); // recalculate automatically
   });
 }
+// ── TICKER AUTOCOMPLETE ───────────────────────────────────────────────────────
+// FMP sector → our sector map
+const FMP_SECTOR_MAP={
+  'Technology':'Technology','Financial Services':'Financials','Financial':'Financials',
+  'Healthcare':'Healthcare','Energy':'Energy','Communication Services':'Telecom',
+  'Consumer Cyclical':'Consumer','Consumer Defensive':'Consumer',
+  'Industrials':'Industrials','Basic Materials':'Industrials',
+  'Real Estate':'Real Estate','Utilities':'Energy','Crypto':'Crypto'
+};
+const CRYPTO_NAMES={BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BNB:'BNB',ADA:'Cardano',DOT:'Polkadot',AVAX:'Avalanche',MATIC:'Polygon',LINK:'Chainlink',UNI:'Uniswap',XRP:'XRP',DOGE:'Dogecoin',LTC:'Litecoin'};
+
+let tickerLookupTimer=null;
+async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
+  const ticker=val.trim().toUpperCase();
+  clearTimeout(tickerLookupTimer);
+  const status=document.getElementById(statusId);
+  if(ticker.length<1){status.textContent='';return;}
+
+  // instant crypto check
+  if(CRYPTO_NAMES[ticker]){
+    document.getElementById(nameId).value=CRYPTO_NAMES[ticker];
+    document.getElementById(typeId).value='crypto';
+    document.getElementById(sectorId).value='Crypto';
+    status.style.color='var(--green)';status.textContent='✓ Cripto reconocida';
+    return;
+  }
+
+  // debounce 600ms before calling API
+  status.style.color='var(--cyan)';status.textContent='Buscando…';
+  tickerLookupTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
+      const d=await r.json();
+      if(d&&d[0]&&d[0].companyName){
+        const p=d[0];
+        document.getElementById(nameId).value=p.companyName||ticker;
+        document.getElementById(typeId).value='stock';
+        const mappedSector=FMP_SECTOR_MAP[p.sector]||p.sector||'Technology';
+        // set sector select
+        const sel=document.getElementById(sectorId);
+        for(let i=0;i<sel.options.length;i++){
+          if(sel.options[i].value===mappedSector){sel.selectedIndex=i;break;}
+        }
+        // pre-fill current price as cost hint
+        if(p.price&&!document.getElementById(costId).value)
+          document.getElementById(costId).value=p.price.toFixed(2);
+        status.style.color='var(--green)';
+        status.textContent=`✓ ${p.companyName} — ${p.exchange||''}`;
+      } else {
+        status.style.color='var(--amber)';status.textContent='No encontrado — ingresa nombre manualmente';
+      }
+    }catch(e){
+      status.style.color='var(--amber)';status.textContent='Error buscando ticker';
+    }
+  },600);
+}
+
+// ── RENTABILIDAD AUTOMÁTICA MÓDULOS ──────────────────────────────────────────
+function calcModuleRent(k){
+  const costo=parseFloat(document.getElementById(k+'-costo').value)||0;
+  const valor=parseFloat(document.getElementById(k+'-valor').value)||0;
+  const rentEl=document.getElementById(k+'-rent');
+  if(costo>0&&valor>0){
+    const pct=((valor-costo)/costo)*100;
+    rentEl.value=pct.toFixed(2);
+    rentEl.style.color=pct>=0?'var(--green)':'var(--red)';
+  } else {
+    rentEl.value='';
+    rentEl.style.color='var(--sub)';
+  }
+}
+
 function saveRow(id){
   const p=portfolio.find(x=>x.id===id);if(!p)return;
   const newTicker=document.getElementById(`et-ticker-${id}`).value.trim().toUpperCase()||p.ticker;
