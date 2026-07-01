@@ -862,105 +862,132 @@ function renderEditTable(){
   });
 }
 // ── TICKER AUTOCOMPLETE ───────────────────────────────────────────────────────
-const FMP_SECTOR_MAP={
-  'Technology':'Technology','Financial Services':'Financials','Financial':'Financials',
-  'Healthcare':'Healthcare','Energy':'Energy','Communication Services':'Telecom',
-  'Consumer Cyclical':'Consumer','Consumer Defensive':'Consumer',
-  'Industrials':'Industrials','Basic Materials':'Industrials',
-  'Real Estate':'Real Estate','Utilities':'Energy','Crypto':'Crypto'
-};
-const CRYPTO_NAMES={BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BNB:'BNB',ADA:'Cardano',DOT:'Polkadot',AVAX:'Avalanche',MATIC:'Polygon',LINK:'Chainlink',UNI:'Uniswap',XRP:'XRP',DOGE:'Dogecoin',LTC:'Litecoin'};
+const CRYPTO_NAMES={BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BNB:'BNB',ADA:'Cardano',
+  DOT:'Polkadot',AVAX:'Avalanche',MATIC:'Polygon',LINK:'Chainlink',UNI:'Uniswap',
+  XRP:'XRP',DOGE:'Dogecoin',LTC:'Litecoin',SHIB:'Shiba Inu',TON:'Toncoin'};
 
-// Sector manual por ticker conocido (fallback cuando API no trae sector)
-const KNOWN_SECTORS={
-  AAPL:'Technology',MSFT:'Technology',GOOGL:'Technology',GOOG:'Technology',META:'Technology',
-  NVDA:'Technology',AMD:'Technology',INTC:'Technology',CRM:'Technology',ORCL:'Technology',
-  TSLA:'Technology',AMZN:'Technology',NFLX:'Technology',ADBE:'Technology',PYPL:'Technology',
-  JPM:'Financials',BAC:'Financials',WFC:'Financials',GS:'Financials',MS:'Financials',
-  V:'Financials',MA:'Financials',AXP:'Financials',BLK:'Financials',C:'Financials',
-  JNJ:'Healthcare',UNH:'Healthcare',PFE:'Healthcare',ABBV:'Healthcare',MRK:'Healthcare',
-  LLY:'Healthcare',TMO:'Healthcare',ABT:'Healthcare',DHR:'Healthcare',BMY:'Healthcare',
-  XOM:'Energy',CVX:'Energy',COP:'Energy',SLB:'Energy',EOG:'Energy',
-  VZ:'Telecom',T:'Telecom',TMUS:'Telecom',CMCSA:'Telecom',CHTR:'Telecom',
-  WMT:'Consumer',COST:'Consumer',TGT:'Consumer',HD:'Consumer',LOW:'Consumer',
-  MCD:'Consumer',SBUX:'Consumer',NKE:'Consumer',PG:'Consumer',KO:'Consumer',PEP:'Consumer',
-  BA:'Industrials',CAT:'Industrials',GE:'Industrials',MMM:'Industrials',HON:'Industrials',
-  SPY:'Technology',QQQ:'Technology',VTI:'Technology',VOO:'Technology',
-};
+const YAHOO_SECTOR_MAP={
+  'Technology':'Technology','Financial Services':'Financials','Healthcare':'Healthcare',
+  'Energy':'Energy','Communication Services':'Telecom','Consumer Cyclical':'Consumer',
+  'Consumer Defensive':'Consumer','Industrials':'Industrials','Basic Materials':'Industrials',
+  'Real Estate':'Real Estate','Utilities':'Energy'};
 
 let tickerLookupTimer=null;
+
 async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
   const ticker=val.trim().toUpperCase();
   clearTimeout(tickerLookupTimer);
   const status=document.getElementById(statusId);
   if(ticker.length<1){status.textContent='';return;}
 
-  // Cripto instantáneo sin API
+  // ── Cripto instantáneo sin API ──
   if(CRYPTO_NAMES[ticker]){
     document.getElementById(nameId).value=CRYPTO_NAMES[ticker];
     document.getElementById(typeId).value='crypto';
-    document.getElementById(sectorId).value='Crypto';
-    status.style.color='var(--green)';status.textContent='✓ Cripto reconocida';
+    setSelect(sectorId,'Crypto');
+    status.style.color='var(--green)';
+    status.textContent='✓ Cripto reconocida';
     return;
   }
 
-  // Sector conocido instantáneo
-  if(KNOWN_SECTORS[ticker]){
-    const sel=document.getElementById(sectorId);
-    for(let i=0;i<sel.options.length;i++){
-      if(sel.options[i].value===KNOWN_SECTORS[ticker]){sel.selectedIndex=i;break;}
+  status.style.color='var(--cyan)';
+  status.textContent='Buscando…';
+
+  tickerLookupTimer=setTimeout(()=>lookupTicker(ticker,nameId,costId,typeId,sectorId,statusId),700);
+}
+
+async function lookupTicker(ticker,nameId,costId,typeId,sectorId,statusId){
+  const status=document.getElementById(statusId);
+
+  // ── Método 1: Yahoo Finance v8 via allorigins proxy ──
+  try{
+    const yUrl=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+    const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
+    const outer=await res.json();
+    const data=JSON.parse(outer.contents);
+    const meta=data?.chart?.result?.[0]?.meta;
+    if(meta&&meta.regularMarketPrice){
+      const price=meta.regularMarketPrice;
+      const name=meta.longName||meta.shortName||ticker;
+      document.getElementById(nameId).value=name;
+      document.getElementById(typeId).value='stock';
+      if(!document.getElementById(costId).value)
+        document.getElementById(costId).value=price.toFixed(2);
+      // fetch extra details (sector, dividends) from Yahoo v11
+      fetchYahooDetails(ticker,sectorId,statusId,name,price);
+      return;
     }
+  }catch(e){}
+
+  // ── Método 2: Yahoo Finance v11 quoteSummary via corsproxy.io ──
+  try{
+    const yUrl2=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=summaryProfile,summaryDetail,assetProfile`;
+    const res2=await fetch(`https://corsproxy.io/?${encodeURIComponent(yUrl2)}`);
+    const d2=await res2.json();
+    const profile=d2?.quoteSummary?.result?.[0];
+    if(profile){
+      const sp=profile.summaryProfile||{};
+      const sd=profile.summaryDetail||{};
+      const name=sp.longName||ticker;
+      document.getElementById(nameId).value=name;
+      document.getElementById(typeId).value='stock';
+      const sec=YAHOO_SECTOR_MAP[sp.sector]||sp.sector||'Technology';
+      setSelect(sectorId,sec);
+      const div=sd.dividendRate?.raw||0;
+      if(div>0) document.getElementById('e-div').value=div.toFixed(2);
+      status.style.color='var(--green)';
+      status.textContent=`✓ ${name} | Sector: ${sec}${div>0?' | Div: $'+div.toFixed(2):''}`;
+      return;
+    }
+  }catch(e){}
+
+  // ── Método 3: Yahoo autocomplete search (no CORS issues) ──
+  try{
+    const res3=await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://query2.finance.yahoo.com/v1/finance/search?q=${ticker}&quotesCount=1&newsCount=0`)}`);
+    const d3=await res3.json();
+    const q=d3?.finance?.result?.[0]?.quotes?.[0];
+    if(q&&(q.longname||q.shortname)){
+      const name=q.longname||q.shortname;
+      document.getElementById(nameId).value=name;
+      document.getElementById(typeId).value='stock';
+      status.style.color='var(--green)';
+      status.textContent=`✓ ${name} — completa sector y dividendo manualmente`;
+      return;
+    }
+  }catch(e){}
+
+  status.style.color='var(--amber)';
+  status.textContent='No encontrado — ingresa el nombre manualmente';
+}
+
+async function fetchYahooDetails(ticker,sectorId,statusId,name,price){
+  const status=document.getElementById(statusId);
+  try{
+    const yUrl=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=summaryProfile,summaryDetail`;
+    const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
+    const outer=await res.json();
+    const d=JSON.parse(outer.contents);
+    const profile=d?.quoteSummary?.result?.[0];
+    const sp=profile?.summaryProfile||{};
+    const sd=profile?.summaryDetail||{};
+    const sec=YAHOO_SECTOR_MAP[sp.sector]||sp.sector||'Technology';
+    setSelect(sectorId,sec);
+    const div=sd.dividendRate?.raw||0;
+    if(div>0) document.getElementById('e-div').value=div.toFixed(2);
+    status.style.color='var(--green)';
+    status.textContent=`✓ ${name} | $${price} | ${sec}${div>0?' | Div: $'+div.toFixed(2):''}`;
+  }catch(e){
+    status.style.color='var(--green)';
+    status.textContent=`✓ ${name} | $${price}`;
   }
+}
 
-  if(ticker.length<2){status.textContent='';return;}
-
-  // Debounce 700ms
-  status.style.color='var(--cyan)';status.textContent='Buscando…';
-  tickerLookupTimer=setTimeout(async()=>{
-    let found=false;
-
-    // Intento 1: FMP quote (incluye nombre, gratis)
-    try{
-      const r=await fetch(`https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${FMP_KEY}`);
-      const d=await r.json();
-      if(Array.isArray(d)&&d[0]&&d[0].name){
-        const q=d[0];
-        document.getElementById(nameId).value=q.name;
-        document.getElementById(typeId).value='stock';
-        if(q.price&&!document.getElementById(costId).value)
-          document.getElementById(costId).value=q.price.toFixed(2);
-        // sector desde mapa conocido o genérico
-        const sec=KNOWN_SECTORS[ticker]||'Technology';
-        const sel=document.getElementById(sectorId);
-        for(let i=0;i<sel.options.length;i++){
-          if(sel.options[i].value===sec){sel.selectedIndex=i;break;}
-        }
-        status.style.color='var(--green)';
-        status.textContent=`✓ ${q.name}  |  Precio: $${q.price}`;
-        found=true;
-      }
-    }catch(e){}
-
-    // Intento 2: FMP search endpoint
-    if(!found){
-      try{
-        const r2=await fetch(`https://financialmodelingprep.com/api/v3/search?query=${ticker}&limit=1&apikey=${FMP_KEY}`);
-        const d2=await r2.json();
-        if(Array.isArray(d2)&&d2[0]&&d2[0].name){
-          document.getElementById(nameId).value=d2[0].name;
-          document.getElementById(typeId).value='stock';
-          status.style.color='var(--green)';
-          status.textContent=`✓ ${d2[0].name}  |  ${d2[0].stockExchange||''}`;
-          found=true;
-        }
-      }catch(e){}
-    }
-
-    if(!found){
-      status.style.color='var(--amber)';
-      status.textContent='No encontrado — ingresa el nombre manualmente';
-    }
-  },700);
+function setSelect(id,val){
+  const sel=document.getElementById(id);
+  if(!sel)return;
+  for(let i=0;i<sel.options.length;i++){
+    if(sel.options[i].value===val){sel.selectedIndex=i;return;}
+  }
 }
 
 // ── RENTABILIDAD AUTOMÁTICA MÓDULOS ──────────────────────────────────────────
