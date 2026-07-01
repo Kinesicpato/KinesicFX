@@ -181,6 +181,7 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
       <button class="curr-btn active" id="btn-usd" onclick="setCurrency('USD')">USD</button>
       <button class="curr-btn" id="btn-clp" onclick="setCurrency('CLP')">CLP</button>
     </div>
+    <button onclick="clearData()" title="Borrar todos los datos guardados" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:700">🗑 Reset</button>
     <div style="text-align:right">
       <div style="font-size:9px;color:var(--muted)">ACTUALIZACIÓN</div>
       <div class="update-time" id="update-time">—</div>
@@ -852,6 +853,7 @@ function saveRow(id){
   if(!prices[p.ticker])prices[p.ticker]=p.avgCost;if(!priceHist[p.ticker])priceHist[p.ticker]=[p.avgCost];
   const row=document.getElementById(`erow-${id}`);
   row.classList.remove('saved-flash');void row.offsetWidth;row.classList.add('saved-flash');
+  saveData();
   render();
 }
 function saveModule(k){
@@ -868,6 +870,7 @@ function saveModule(k){
   const msg=document.getElementById(k+'-msg');
   msg.style.color='var(--green)';msg.textContent='✓ Guardado correctamente.';
   setTimeout(()=>msg.textContent='',2500);
+  saveData();
   render();
 }
 
@@ -1001,6 +1004,7 @@ function addTrdEntry(){
   document.getElementById('trd-nota').value='';
   msg.style.color='var(--green)';msg.textContent='✓ Registro agregado.';
   setTimeout(()=>msg.textContent='',2000);
+  saveData();
   render();
 }
 function removeTrdEntry(i){
@@ -1008,6 +1012,7 @@ function removeTrdEntry(i){
   trdHistory.splice(i,1);
   if(trdHistory.length>0)modules.trd.valor=trdHistory[trdHistory.length-1].capital;
   else modules.trd.valor=0;
+  saveData();
   render();
 }
 function renderTrading(){
@@ -1178,6 +1183,37 @@ function drawTrdChart(hist,inicial){
   }
 }
 
+// ── PERSISTENCIA localStorage ─────────────────────────────────────────────────
+const STORE_KEY='kinesicfx_v1';
+
+function saveData(){
+  try{
+    localStorage.setItem(STORE_KEY,JSON.stringify({
+      portfolio,modules,trdHistory,nextId,currency
+    }));
+  }catch(e){console.warn('No se pudo guardar en localStorage',e);}
+}
+
+function loadData(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    if(d.portfolio&&Array.isArray(d.portfolio)&&d.portfolio.length>0) portfolio=d.portfolio;
+    if(d.modules) modules=Object.assign(modules,d.modules);
+    if(d.trdHistory&&Array.isArray(d.trdHistory)) trdHistory=d.trdHistory;
+    if(d.nextId) nextId=d.nextId;
+    if(d.currency) currency=d.currency;
+    return true;
+  }catch(e){console.warn('Error cargando datos guardados',e);return false;}
+}
+
+function clearData(){
+  if(!confirm('⚠ Esto borrará TODOS tus datos guardados (posiciones, módulos, historial trading). ¿Confirmas?'))return;
+  localStorage.removeItem(STORE_KEY);
+  location.reload();
+}
+
 // ── CONTROLS ──────────────────────────────────────────────────────────────────
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}renderTable();}
 function setTab(t){
@@ -1190,6 +1226,7 @@ function setCurrency(c){
   currency=c;
   document.getElementById('btn-usd').classList.toggle('active',c==='USD');
   document.getElementById('btn-clp').classList.toggle('active',c==='CLP');
+  saveData();
   render();
 }
 function toggleEdit(){
@@ -1219,11 +1256,14 @@ function addPosition(){
   ['e-ticker','e-name','e-shares','e-cost','e-div'].forEach(id=>document.getElementById(id).value='');
   msg.style.color='var(--green)';msg.textContent='✓ '+ticker+' agregado.';
   setTimeout(()=>msg.textContent='',2500);
+  saveData();
   render();
 }
 function removePosition(id){
   if(!confirm('¿Eliminar esta posición?'))return;
-  portfolio=portfolio.filter(p=>p.id!==id);render();
+  portfolio=portfolio.filter(p=>p.id!==id);
+  saveData();
+  render();
 }
 
 // ── FETCH & BOOT ──────────────────────────────────────────────────────────────
@@ -1247,10 +1287,28 @@ async function fetchAll(){
   render();
 }
 (async()=>{
-  seedPrices();render();
+  // Cargar datos guardados ANTES de renderizar
+  const loaded=loadData();
+
+  // Aplicar moneda guardada
+  document.getElementById('btn-usd').classList.toggle('active',currency==='USD');
+  document.getElementById('btn-clp').classList.toggle('active',currency==='CLP');
+
+  seedPrices();
+  render();
   document.getElementById('loading').style.display='none';
+
+  if(loaded){
+    // Mostrar banner de datos restaurados brevemente
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:999;box-shadow:0 4px 12px #0004';
+    banner.textContent='✓ Datos restaurados correctamente';
+    document.body.appendChild(banner);
+    setTimeout(()=>banner.remove(),3000);
+  }
+
   await fetchAll();
-  setInterval(fetchAll,30000); // cada 30 segundos
+  setInterval(fetchAll,30000);
 })();
 </script>
 </body>
