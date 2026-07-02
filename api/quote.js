@@ -1,8 +1,8 @@
-// api/quote.js
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=30');
 
+  const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
   const { ticker } = req.query;
   if (!ticker) return res.status(400).json({ error: 'ticker requerido' });
 
@@ -11,18 +11,17 @@ module.exports = async function handler(req, res) {
 
   await Promise.allSettled(tickers.map(async (t) => {
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`;
-      const r = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(8000),
-      });
-      const data = await r.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) {
+      const r = await fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${t}&token=${FINNHUB_KEY}`,
+        { signal: AbortSignal.timeout(7000) }
+      );
+      const d = await r.json();
+      if (d && d.c && d.c > 0) {
         results[t] = {
-          price: meta.regularMarketPrice,
-          previousClose: meta.previousClose || meta.regularMarketPrice,
-          name: meta.longName || meta.shortName || t,
+          price: d.c,
+          previousClose: d.pc || d.c,
+          change: d.d || 0,
+          changePct: d.dp || 0,
         };
       }
     } catch(e) {}
