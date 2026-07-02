@@ -600,74 +600,79 @@ async function fetchFX(){
     const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=CLP');
     const d=await r.json();
     if(d.rates&&d.rates.CLP)fxUSDCLP=d.rates.CLP;
-  }catch(e){
-    // fallback: FMP forex
-    try{
-      const r2=await fetch(`https://financialmodelingprep.com/api/v3/fx/USDCLP?apikey=${FMP_KEY}`);
-      const d2=await r2.json();
-      if(d2[0]&&d2[0].ask) fxUSDCLP=d2[0].ask;
-    }catch(e2){console.warn('FX fetch failed, using fallback rate');}
-  }
+  }catch(e){console.warn('FX fetch failed');}
 }
 
-// ── FETCH STOCKS via FMP (batch, single call) ─────────────────────────────────
+// ── FETCH STOCKS via Yahoo Finance (3 proxies en cascada) ─────────────────────
+// corsproxy.io y allorigins funcionan desde Vercel sin restricciones
+const PROXIES=[
+  t=>`https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=2d')}`,
+  t=>`https://api.allorigins.win/get?url=${encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=2d')}`,
+  t=>`https://api.codetabs.com/v1/proxy?quest=https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d%26range=2d`,
+];
+
+async function fetchOneTicker(ticker){
+  for(const proxyFn of PROXIES){
+    try{
+      const url=proxyFn(ticker);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),7000);
+      const r=await fetch(url,{signal:controller.signal});
+      clearTimeout(timer);
+      let data;
+      if(url.includes('allorigins')){
+        const outer=await r.json();
+        data=JSON.parse(outer.contents);
+      }else{
+        data=await r.json();
+      }
+      const meta=data?.chart?.result?.[0]?.meta;
+      if(meta&&meta.regularMarketPrice){
+        prevPrices[ticker]=prices[ticker]||meta.previousClose||meta.regularMarketPrice;
+        prices[ticker]=meta.regularMarketPrice;
+        return true;
+      }
+    }catch(e){}
+  }
+  // último recurso: FMP
+  try{
+    const r=await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${ticker}?apikey=${FMP_KEY}`);
+    const d=await r.json();
+    if(d[0]?.price){
+      prevPrices[ticker]=prices[ticker]||d[0].price;
+      prices[ticker]=d[0].price;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
 async function fetchStocks(){
   const stocks=portfolio.filter(p=>p.type==='stock');
   if(!stocks.length)return;
-  const tickers=stocks.map(p=>p.ticker).join(',');
-  try{
-    // Batch quote endpoint — 1 call for all tickers
-    const r=await fetch(`https://financialmodelingprep.com/api/v3/quote/${tickers}?apikey=${FMP_KEY}`);
-    const data=await r.json();
-    if(!Array.isArray(data))throw new Error('FMP bad response');
-    data.forEach(q=>{
-      if(q.symbol&&q.price){
-        prevPrices[q.symbol]=prices[q.symbol];
-        prices[q.symbol]=q.price;
-        // store previous close for daily change
-        if(q.previousClose&&!prevPrices[q.symbol])
-          prevPrices[q.symbol]=q.previousClose;
-      }
-    });
-  }catch(e){
-    console.warn('FMP stocks fetch failed:',e);
-    // fallback per-ticker via simple quote
-    await Promise.allSettled(stocks.map(async pos=>{
-      try{
-        const r=await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${pos.ticker}?apikey=${FMP_KEY}`);
-        const d=await r.json();
-        if(d[0]&&d[0].price){prevPrices[pos.ticker]=prices[pos.ticker];prices[pos.ticker]=d[0].price;}
-      }catch(e2){console.warn(`FMP fallback failed: ${pos.ticker}`);}
-    }));
-  }
+  await Promise.allSettled(stocks.map(p=>fetchOneTicker(p.ticker)));
 }
 
-// ── FETCH CRYPTO via CoinGecko (free, no key needed) ─────────────────────────
+// ── FETCH CRYPTO via CoinGecko ────────────────────────────────────────────────
 async function fetchCrypto(){
   const cryptos=portfolio.filter(p=>p.type==='crypto');
   if(!cryptos.length)return;
   const ids=cryptos.map(p=>CRYPTO_IDS[p.ticker]||p.ticker.toLowerCase()).join(',');
   try{
-    const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+    const controller=new AbortController();
+    setTimeout(()=>controller.abort(),8000);
+    const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,{signal:controller.signal});
     const d=await r.json();
     cryptos.forEach(p=>{
       const id=CRYPTO_IDS[p.ticker]||p.ticker.toLowerCase();
-      if(d[id]&&d[id].usd){
-        prevPrices[p.ticker]=prices[p.ticker];
+      if(d[id]?.usd){
+        prevPrices[p.ticker]=prices[p.ticker]||d[id].usd;
         prices[p.ticker]=d[id].usd;
       }
     });
   }catch(e){
-    console.warn('CoinGecko failed, trying FMP crypto:',e);
-    // fallback: FMP crypto quotes
-    await Promise.allSettled(cryptos.map(async p=>{
-      try{
-        const sym=p.ticker+'USD';
-        const r=await fetch(`https://financialmodelingprep.com/api/v3/quote/${sym}?apikey=${FMP_KEY}`);
-        const d=await r.json();
-        if(d[0]&&d[0].price){prevPrices[p.ticker]=prices[p.ticker];prices[p.ticker]=d[0].price;}
-      }catch(e2){console.warn(`FMP crypto fallback failed: ${p.ticker}`);}
-    }));
+    // fallback cripto via Yahoo
+    await Promise.allSettled(cryptos.map(p=>fetchOneTicker(p.ticker+'-USD')));
   }
 }
 
