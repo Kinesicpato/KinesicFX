@@ -591,88 +591,64 @@ const SECTORS=['Technology','Financials','Healthcare','Energy','Telecom','Crypto
 let prices={},prevPrices={},priceHist={},fxUSDCLP=920;
 let currency='USD',sortKey='marketValue',sortDir=-1,activeTab='table',editOpen=false,nextId=100,rows=[],isLive=false;
 
-// ── API CONFIG ────────────────────────────────────────────────────────────────
-const FMP_KEY='xpjvsbv3wtHxy2uwhWdsXKJ5052KzdKJ';
+// ── API — llama a nuestras propias rutas de Vercel (/api/*) ──────────────────
+// Esto corre server-side en Vercel, sin restricciones CORS ni bloqueos
 
-// ── FETCH FX ──────────────────────────────────────────────────────────────────
 async function fetchFX(){
   try{
-    const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=CLP');
-    const d=await r.json();
-    if(d.rates&&d.rates.CLP)fxUSDCLP=d.rates.CLP;
-  }catch(e){console.warn('FX fetch failed');}
-}
-
-// ── FETCH STOCKS via Yahoo Finance (3 proxies en cascada) ─────────────────────
-// corsproxy.io y allorigins funcionan desde Vercel sin restricciones
-const PROXIES=[
-  t=>`https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=2d')}`,
-  t=>`https://api.allorigins.win/get?url=${encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=2d')}`,
-  t=>`https://api.codetabs.com/v1/proxy?quest=https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d%26range=2d`,
-];
-
-async function fetchOneTicker(ticker){
-  for(const proxyFn of PROXIES){
-    try{
-      const url=proxyFn(ticker);
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),7000);
-      const r=await fetch(url,{signal:controller.signal});
-      clearTimeout(timer);
-      let data;
-      if(url.includes('allorigins')){
-        const outer=await r.json();
-        data=JSON.parse(outer.contents);
-      }else{
-        data=await r.json();
-      }
-      const meta=data?.chart?.result?.[0]?.meta;
-      if(meta&&meta.regularMarketPrice){
-        prevPrices[ticker]=prices[ticker]||meta.previousClose||meta.regularMarketPrice;
-        prices[ticker]=meta.regularMarketPrice;
-        return true;
-      }
-    }catch(e){}
-  }
-  // último recurso: FMP
-  try{
-    const r=await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${ticker}?apikey=${FMP_KEY}`);
-    const d=await r.json();
-    if(d[0]?.price){
-      prevPrices[ticker]=prices[ticker]||d[0].price;
-      prices[ticker]=d[0].price;
-      return true;
-    }
-  }catch(e){}
-  return false;
+    const r = await fetch('/api/fx');
+    const d = await r.json();
+    if(d.rate) fxUSDCLP = d.rate;
+  }catch(e){ console.warn('FX fetch failed'); }
 }
 
 async function fetchStocks(){
-  const stocks=portfolio.filter(p=>p.type==='stock');
-  if(!stocks.length)return;
-  await Promise.allSettled(stocks.map(p=>fetchOneTicker(p.ticker)));
+  const stocks = portfolio.filter(p => p.type === 'stock');
+  if(!stocks.length) return;
+  const tickers = stocks.map(p => p.ticker).join(',');
+  try{
+    const r = await fetch(`/api/quote?ticker=${tickers}`);
+    const d = await r.json();
+    Object.entries(d).forEach(([sym, q]) => {
+      prevPrices[sym] = prices[sym] || q.previousClose;
+      prices[sym]     = q.price;
+    });
+  }catch(e){ console.warn('Stock fetch failed', e); }
 }
 
-// ── FETCH CRYPTO via CoinGecko ────────────────────────────────────────────────
 async function fetchCrypto(){
-  const cryptos=portfolio.filter(p=>p.type==='crypto');
-  if(!cryptos.length)return;
-  const ids=cryptos.map(p=>CRYPTO_IDS[p.ticker]||p.ticker.toLowerCase()).join(',');
+  const cryptos = portfolio.filter(p => p.type === 'crypto');
+  if(!cryptos.length) return;
+  // CoinGecko directo — no tiene restricciones CORS
+  const CRYPTO_IDS_MAP = {BTC:'bitcoin',ETH:'ethereum',SOL:'solana',BNB:'binancecoin',
+    ADA:'cardano',DOT:'polkadot',AVAX:'avalanche-2',MATIC:'matic-network',
+    LINK:'chainlink',UNI:'uniswap',XRP:'ripple',DOGE:'dogecoin',LTC:'litecoin'};
+  const ids = cryptos.map(p => CRYPTO_IDS_MAP[p.ticker]||p.ticker.toLowerCase()).join(',');
   try{
-    const controller=new AbortController();
-    setTimeout(()=>controller.abort(),8000);
-    const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,{signal:controller.signal});
-    const d=await r.json();
-    cryptos.forEach(p=>{
-      const id=CRYPTO_IDS[p.ticker]||p.ticker.toLowerCase();
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+      {signal: AbortSignal.timeout(8000)});
+    const d = await r.json();
+    cryptos.forEach(p => {
+      const id = CRYPTO_IDS_MAP[p.ticker]||p.ticker.toLowerCase();
       if(d[id]?.usd){
-        prevPrices[p.ticker]=prices[p.ticker]||d[id].usd;
-        prices[p.ticker]=d[id].usd;
+        prevPrices[p.ticker] = prices[p.ticker] || d[id].usd;
+        prices[p.ticker]     = d[id].usd;
       }
     });
   }catch(e){
-    // fallback cripto via Yahoo
-    await Promise.allSettled(cryptos.map(p=>fetchOneTicker(p.ticker+'-USD')));
+    // fallback: Yahoo via nuestra API
+    try{
+      const tickers = cryptos.map(p=>p.ticker+'-USD').join(',');
+      const r2 = await fetch(`/api/quote?ticker=${tickers}`);
+      const d2 = await r2.json();
+      cryptos.forEach(p => {
+        const key = p.ticker+'-USD';
+        if(d2[key]?.price){
+          prevPrices[p.ticker] = prices[p.ticker]||d2[key].price;
+          prices[p.ticker]     = d2[key].price;
+        }
+      });
+    }catch(e2){}
   }
 }
 
@@ -902,89 +878,30 @@ async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
 }
 
 async function lookupTicker(ticker,nameId,costId,typeId,sectorId,statusId){
-  const status=document.getElementById(statusId);
-
-  // ── Método 1: Yahoo Finance v8 via allorigins proxy ──
+  const status = document.getElementById(statusId);
   try{
-    const yUrl=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
-    const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
-    const outer=await res.json();
-    const data=JSON.parse(outer.contents);
-    const meta=data?.chart?.result?.[0]?.meta;
-    if(meta&&meta.regularMarketPrice){
-      const price=meta.regularMarketPrice;
-      const name=meta.longName||meta.shortName||ticker;
-      document.getElementById(nameId).value=name;
-      document.getElementById(typeId).value='stock';
-      if(!document.getElementById(costId).value)
-        document.getElementById(costId).value=price.toFixed(2);
-      // fetch extra details (sector, dividends) from Yahoo v11
-      fetchYahooDetails(ticker,sectorId,statusId,name,price);
+    // Llama a nuestra propia API en Vercel — sin CORS, sin bloqueos
+    const r = await fetch(`/api/lookup?ticker=${ticker}`);
+    if(!r.ok) throw new Error('not found');
+    const d = await r.json();
+    if(d.name){
+      document.getElementById(nameId).value = d.name;
+      document.getElementById(typeId).value  = d.type || 'stock';
+      if(d.sector)  setSelect(sectorId, d.sector);
+      if(d.price && !document.getElementById(costId).value)
+        document.getElementById(costId).value = d.price.toFixed(2);
+      if(d.annualDividend > 0)
+        document.getElementById('e-div').value = d.annualDividend.toFixed(2);
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ ${d.name}`
+        + (d.sector  ? ` | ${d.sector}` : '')
+        + (d.price   ? ` | $${d.price}` : '')
+        + (d.annualDividend > 0 ? ` | Div: $${d.annualDividend.toFixed(2)}` : '');
       return;
     }
   }catch(e){}
-
-  // ── Método 2: Yahoo Finance v11 quoteSummary via corsproxy.io ──
-  try{
-    const yUrl2=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=summaryProfile,summaryDetail,assetProfile`;
-    const res2=await fetch(`https://corsproxy.io/?${encodeURIComponent(yUrl2)}`);
-    const d2=await res2.json();
-    const profile=d2?.quoteSummary?.result?.[0];
-    if(profile){
-      const sp=profile.summaryProfile||{};
-      const sd=profile.summaryDetail||{};
-      const name=sp.longName||ticker;
-      document.getElementById(nameId).value=name;
-      document.getElementById(typeId).value='stock';
-      const sec=YAHOO_SECTOR_MAP[sp.sector]||sp.sector||'Technology';
-      setSelect(sectorId,sec);
-      const div=sd.dividendRate?.raw||0;
-      if(div>0) document.getElementById('e-div').value=div.toFixed(2);
-      status.style.color='var(--green)';
-      status.textContent=`✓ ${name} | Sector: ${sec}${div>0?' | Div: $'+div.toFixed(2):''}`;
-      return;
-    }
-  }catch(e){}
-
-  // ── Método 3: Yahoo autocomplete search (no CORS issues) ──
-  try{
-    const res3=await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://query2.finance.yahoo.com/v1/finance/search?q=${ticker}&quotesCount=1&newsCount=0`)}`);
-    const d3=await res3.json();
-    const q=d3?.finance?.result?.[0]?.quotes?.[0];
-    if(q&&(q.longname||q.shortname)){
-      const name=q.longname||q.shortname;
-      document.getElementById(nameId).value=name;
-      document.getElementById(typeId).value='stock';
-      status.style.color='var(--green)';
-      status.textContent=`✓ ${name} — completa sector y dividendo manualmente`;
-      return;
-    }
-  }catch(e){}
-
-  status.style.color='var(--amber)';
-  status.textContent='No encontrado — ingresa el nombre manualmente';
-}
-
-async function fetchYahooDetails(ticker,sectorId,statusId,name,price){
-  const status=document.getElementById(statusId);
-  try{
-    const yUrl=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=summaryProfile,summaryDetail`;
-    const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
-    const outer=await res.json();
-    const d=JSON.parse(outer.contents);
-    const profile=d?.quoteSummary?.result?.[0];
-    const sp=profile?.summaryProfile||{};
-    const sd=profile?.summaryDetail||{};
-    const sec=YAHOO_SECTOR_MAP[sp.sector]||sp.sector||'Technology';
-    setSelect(sectorId,sec);
-    const div=sd.dividendRate?.raw||0;
-    if(div>0) document.getElementById('e-div').value=div.toFixed(2);
-    status.style.color='var(--green)';
-    status.textContent=`✓ ${name} | $${price} | ${sec}${div>0?' | Div: $'+div.toFixed(2):''}`;
-  }catch(e){
-    status.style.color='var(--green)';
-    status.textContent=`✓ ${name} | $${price}`;
-  }
+  status.style.color = 'var(--amber)';
+  status.textContent = 'No encontrado — ingresa el nombre manualmente';
 }
 
 function setSelect(id,val){
