@@ -591,64 +591,73 @@ const SECTORS=['Technology','Financials','Healthcare','Energy','Telecom','Crypto
 let prices={},prevPrices={},priceHist={},fxUSDCLP=920;
 let currency='USD',sortKey='marketValue',sortDir=-1,activeTab='table',editOpen=false,nextId=100,rows=[],isLive=false;
 
-// ── API — llama a nuestras propias rutas de Vercel (/api/*) ──────────────────
-// Esto corre server-side en Vercel, sin restricciones CORS ni bloqueos
+// ── FINNHUB — llamadas directas desde el browser (permite CORS) ──────────────
+const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
+const FINNHUB = 'https://finnhub.io/api/v1';
 
 async function fetchFX(){
   try{
-    const r = await fetch('/api/fx');
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=CLP');
     const d = await r.json();
-    if(d.rate) fxUSDCLP = d.rate;
-  }catch(e){ console.warn('FX fetch failed'); }
+    if(d.rates?.CLP) fxUSDCLP = d.rates.CLP;
+  }catch(e){
+    // fallback: Finnhub forex
+    try{
+      const r2 = await fetch(`${FINNHUB}/forex/rates?base=USD&token=${FINNHUB_KEY}`);
+      const d2 = await r2.json();
+      if(d2.quote?.CLP) fxUSDCLP = d2.quote.CLP;
+    }catch(e2){}
+  }
 }
 
 async function fetchStocks(){
   const stocks = portfolio.filter(p => p.type === 'stock');
   if(!stocks.length) return;
-  const tickers = stocks.map(p => p.ticker).join(',');
-  try{
-    const r = await fetch(`/api/quote?ticker=${tickers}`);
-    const d = await r.json();
-    Object.entries(d).forEach(([sym, q]) => {
-      prevPrices[sym] = prices[sym] || q.previousClose;
-      prices[sym]     = q.price;
-    });
-  }catch(e){ console.warn('Stock fetch failed', e); }
+  // Finnhub permite CORS desde el browser — una llamada por ticker
+  await Promise.allSettled(stocks.map(async pos => {
+    try{
+      const r = await fetch(`${FINNHUB}/quote?symbol=${pos.ticker}&token=${FINNHUB_KEY}`);
+      const d = await r.json();
+      if(d.c && d.c > 0){
+        prevPrices[pos.ticker] = prices[pos.ticker] || d.pc || d.c;
+        prices[pos.ticker] = d.c;
+      }
+    }catch(e){ console.warn(`Finnhub quote failed: ${pos.ticker}`, e); }
+  }));
 }
 
 async function fetchCrypto(){
   const cryptos = portfolio.filter(p => p.type === 'crypto');
   if(!cryptos.length) return;
-  // CoinGecko directo — no tiene restricciones CORS
-  const CRYPTO_IDS_MAP = {BTC:'bitcoin',ETH:'ethereum',SOL:'solana',BNB:'binancecoin',
+  const CRYPTO_IDS_MAP = {
+    BTC:'bitcoin',ETH:'ethereum',SOL:'solana',BNB:'binancecoin',
     ADA:'cardano',DOT:'polkadot',AVAX:'avalanche-2',MATIC:'matic-network',
-    LINK:'chainlink',UNI:'uniswap',XRP:'ripple',DOGE:'dogecoin',LTC:'litecoin'};
-  const ids = cryptos.map(p => CRYPTO_IDS_MAP[p.ticker]||p.ticker.toLowerCase()).join(',');
+    LINK:'chainlink',UNI:'uniswap',XRP:'ripple',DOGE:'dogecoin',LTC:'litecoin'
+  };
   try{
-    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-      {signal: AbortSignal.timeout(8000)});
+    const ids = cryptos.map(p => CRYPTO_IDS_MAP[p.ticker]||p.ticker.toLowerCase()).join(',');
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
     const d = await r.json();
     cryptos.forEach(p => {
       const id = CRYPTO_IDS_MAP[p.ticker]||p.ticker.toLowerCase();
       if(d[id]?.usd){
         prevPrices[p.ticker] = prices[p.ticker] || d[id].usd;
-        prices[p.ticker]     = d[id].usd;
+        prices[p.ticker] = d[id].usd;
       }
     });
   }catch(e){
-    // fallback: Yahoo via nuestra API
-    try{
-      const tickers = cryptos.map(p=>p.ticker+'-USD').join(',');
-      const r2 = await fetch(`/api/quote?ticker=${tickers}`);
-      const d2 = await r2.json();
-      cryptos.forEach(p => {
-        const key = p.ticker+'-USD';
-        if(d2[key]?.price){
-          prevPrices[p.ticker] = prices[p.ticker]||d2[key].price;
-          prices[p.ticker]     = d2[key].price;
+    // fallback: Finnhub crypto (formato BINANCE:BTCUSDT)
+    await Promise.allSettled(cryptos.map(async p => {
+      try{
+        const sym = `BINANCE:${p.ticker}USDT`;
+        const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if(d.c && d.c > 0){
+          prevPrices[p.ticker] = prices[p.ticker] || d.pc || d.c;
+          prices[p.ticker] = d.c;
         }
-      });
-    }catch(e2){}
+      }catch(e2){}
+    }));
   }
 }
 
@@ -879,27 +888,52 @@ async function onTickerInput(val,nameId,costId,typeId,sectorId,statusId){
 
 async function lookupTicker(ticker,nameId,costId,typeId,sectorId,statusId){
   const status = document.getElementById(statusId);
+
+  const SECTOR_MAP = {
+    'Technology':'Technology','Financial Services':'Financials','Finance':'Financials',
+    'Health Technology':'Healthcare','Health Care':'Healthcare','Healthcare':'Healthcare',
+    'Energy Minerals':'Energy','Energy':'Energy','Communications':'Telecom',
+    'Consumer Non-Durables':'Consumer','Consumer Services':'Consumer',
+    'Consumer Durables':'Consumer','Retail Trade':'Consumer',
+    'Industrial Services':'Industrials','Producer Manufacturing':'Industrials',
+    'Process Industries':'Industrials','Transportation':'Industrials',
+    'Utilities':'Energy','Real Estate':'Real Estate',
+  };
+
   try{
-    // Llama a nuestra propia API en Vercel — sin CORS, sin bloqueos
-    const r = await fetch(`/api/lookup?ticker=${ticker}`);
-    if(!r.ok) throw new Error('not found');
-    const d = await r.json();
-    if(d.name){
-      document.getElementById(nameId).value = d.name;
-      document.getElementById(typeId).value  = d.type || 'stock';
-      if(d.sector)  setSelect(sectorId, d.sector);
-      if(d.price && !document.getElementById(costId).value)
-        document.getElementById(costId).value = d.price.toFixed(2);
-      if(d.annualDividend > 0)
-        document.getElementById('e-div').value = d.annualDividend.toFixed(2);
+    // Finnhub permite CORS desde el browser — llamada directa sin proxy
+    const [profileRes, quoteRes, metricsRes] = await Promise.allSettled([
+      fetch(`${FINNHUB}/stock/profile2?symbol=${ticker}&token=${FINNHUB_KEY}`),
+      fetch(`${FINNHUB}/quote?symbol=${ticker}&token=${FINNHUB_KEY}`),
+      fetch(`${FINNHUB}/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`),
+    ]);
+
+    const profile = profileRes.status==='fulfilled' ? await profileRes.value.json() : {};
+    const quote   = quoteRes.status==='fulfilled'   ? await quoteRes.value.json()   : {};
+    const metrics = metricsRes.status==='fulfilled'  ? await metricsRes.value.json() : {};
+
+    if(profile && profile.name){
+      const sector    = SECTOR_MAP[profile.finnhubIndustry] || profile.finnhubIndustry || 'Technology';
+      const price     = quote.c || 0;
+      const annualDiv = metrics?.metric?.dividendPerShareAnnual || 0;
+
+      document.getElementById(nameId).value = profile.name;
+      document.getElementById(typeId).value = 'stock';
+      if(sector) setSelect(sectorId, sector);
+      if(price > 0 && !document.getElementById(costId).value)
+        document.getElementById(costId).value = price.toFixed(2);
+      if(annualDiv > 0)
+        document.getElementById('e-div').value = annualDiv.toFixed(2);
+
       status.style.color = 'var(--green)';
-      status.textContent = `✓ ${d.name}`
-        + (d.sector  ? ` | ${d.sector}` : '')
-        + (d.price   ? ` | $${d.price}` : '')
-        + (d.annualDividend > 0 ? ` | Div: $${d.annualDividend.toFixed(2)}` : '');
+      status.textContent = `✓ ${profile.name}`
+        + (sector    ? ` | ${sector}`              : '')
+        + (price > 0 ? ` | $${price.toFixed(2)}`  : '')
+        + (annualDiv > 0 ? ` | Div: $${annualDiv.toFixed(2)}` : '');
       return;
     }
-  }catch(e){}
+  }catch(e){ console.warn('Finnhub lookup error:', e); }
+
   status.style.color = 'var(--amber)';
   status.textContent = 'No encontrado — ingresa el nombre manualmente';
 }
