@@ -261,6 +261,7 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
     <button class="tab" onclick="setTab('charts')">🥧 Asignación</button>
     <button class="tab" onclick="setTab('dividends')">💰 Dividendos</button>
     <button class="tab" onclick="setTab('trading')">⚡ Trading</button>
+    <button class="tab" onclick="setTab('budget')">🏠 Presupuesto</button>
     <button class="btn-edit" id="btn-edit" onclick="toggleEdit()">✎ Editar Posiciones</button>
   </div>
 
@@ -555,6 +556,185 @@ table.main-table tr:not(.seg-header-row):not(.seg-total-row):hover td{background
       </div>
     </div>
   </div>
+
+  <!-- PRESUPUESTO TAB -->
+  <div id="tab-budget" style="display:none">
+
+    <!-- KPIs RESUMEN -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px">
+      <div class="kpi" style="border-color:#10b98144">
+        <div class="kpi-label" style="color:var(--green)">Ingreso Mensual</div>
+        <div class="kpi-value" id="bdg-ingreso" style="color:var(--green)">—</div>
+        <div class="kpi-sub">Capital disponible</div>
+      </div>
+      <div class="kpi" style="border-color:#ef444444">
+        <div class="kpi-label" style="color:var(--red)">Total Gastos</div>
+        <div class="kpi-value" id="bdg-gastos" style="color:var(--red)">—</div>
+        <div class="kpi-sub" id="bdg-gastos-pct"></div>
+      </div>
+      <div class="kpi" style="border-color:#60a5fa44">
+        <div class="kpi-label" style="color:var(--glow)">Disponible</div>
+        <div class="kpi-value" id="bdg-disponible" style="color:var(--glow)">—</div>
+        <div class="kpi-sub">Tras gastos</div>
+      </div>
+      <div class="kpi" style="border-color:#8b5cf644">
+        <div class="kpi-label" style="color:var(--purple)">Total Ahorros</div>
+        <div class="kpi-value" id="bdg-ahorros" style="color:var(--purple)">—</div>
+        <div class="kpi-sub" id="bdg-ahorros-pct"></div>
+      </div>
+      <div class="kpi" style="border-color:#f59e0b44">
+        <div class="kpi-label" style="color:var(--amber)">Saldo Libre</div>
+        <div class="kpi-value" id="bdg-libre" style="color:var(--amber)">—</div>
+        <div class="kpi-sub" style="color:var(--sub)">Mín. $230.000 CLP</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+      <!-- PANEL IZQUIERDO: INGRESO + GASTOS -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- INGRESO MENSUAL -->
+        <div class="chart-card" style="border-color:#10b98155">
+          <div class="chart-title" style="color:var(--green)">💵 Ingreso Mensual</div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="flex:1">
+              <div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Monto en CLP</div>
+              <input type="number" id="bdg-ingreso-input" placeholder="1500000"
+                style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:14px;font-weight:700;outline:none"
+                oninput="calcBudget()"/>
+            </div>
+            <button onclick="saveBudget()" style="padding:8px 16px;background:var(--green);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">💾 Guardar</button>
+          </div>
+        </div>
+
+        <!-- GASTOS -->
+        <div class="chart-card" style="border-color:#ef444455">
+          <div class="chart-title" style="color:var(--red)">💸 Gastos Mensuales</div>
+          <div style="display:flex;flex-direction:column;gap:8px" id="bdg-gastos-list">
+            <!-- generado por JS -->
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;font-weight:800">
+            <span>Total Gastos</span>
+            <span id="bdg-total-gastos-lbl" style="color:var(--red)">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL DERECHO: AHORROS -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- AHORROS OBLIGATORIOS -->
+        <div class="chart-card" style="border-color:#8b5cf655">
+          <div class="chart-title" style="color:var(--purple)">🔒 Ahorros Obligatorios (Fijos)</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px">
+              <div>
+                <div style="font-weight:800;font-size:13px">₿ BTC</div>
+                <div style="font-size:10px;color:var(--muted)">Ahorro cripto mensual</div>
+              </div>
+              <div style="font-size:16px;font-weight:900;color:var(--amber)">$40.000</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px">
+              <div>
+                <div style="font-weight:800;font-size:13px">🏦 APV</div>
+                <div style="font-size:10px;color:var(--muted)">Ahorro previsional</div>
+              </div>
+              <div style="font-size:16px;font-weight:900;color:var(--green)">$70.000</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px">
+              <div>
+                <div style="font-weight:800;font-size:13px">⚡ Trading</div>
+                <div style="font-size:10px;color:var(--muted)">Capital de trading</div>
+              </div>
+              <div style="font-size:16px;font-weight:900;color:var(--amber)">$20.000</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:1px solid var(--border)">
+              <span style="font-weight:700;font-size:12px">Subtotal obligatorio</span>
+              <span style="font-weight:900;color:var(--purple)">$130.000</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AHORROS VARIABLES -->
+        <div class="chart-card" style="border-color:#8b5cf655">
+          <div class="chart-title" style="color:var(--purple)">📈 Ahorros Variables</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:12px">Calculados automáticamente con el excedente disponible, garantizando $230.000 libre.</div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px">
+              <div>
+                <div style="font-weight:800;font-size:13px">📊 Acciones</div>
+                <div style="font-size:10px;color:var(--muted)">Renta variable</div>
+              </div>
+              <div style="font-size:16px;font-weight:900;color:var(--accent)" id="bdg-acc-var">—</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px">
+              <div>
+                <div style="font-weight:800;font-size:13px">🏛 Renta Fija</div>
+                <div style="font-size:10px;color:var(--muted)">Instrumentos fijos</div>
+              </div>
+              <div style="font-size:16px;font-weight:900;color:var(--cyan)" id="bdg-rf-var">—</div>
+            </div>
+          </div>
+
+          <!-- DISTRIBUCIÓN ACCIONES/RENTA FIJA -->
+          <div style="margin-top:12px">
+            <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">% para Acciones</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="range" id="bdg-split" min="0" max="100" value="60"
+                style="flex:1;accent-color:var(--accent)" oninput="calcBudget()"/>
+              <span id="bdg-split-lbl" style="font-size:11px;font-weight:700;color:var(--glow);white-space:nowrap">60% / 40%</span>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;font-weight:800">
+            <span>Total Ahorros</span>
+            <span id="bdg-total-ahorros-lbl" style="color:var(--purple)">—</span>
+          </div>
+        </div>
+
+        <!-- SALDO LIBRE -->
+        <div class="chart-card" id="bdg-libre-card" style="border-radius:12px;padding:16px">
+          <div class="chart-title">💰 Saldo Libre Final</div>
+          <div style="font-size:32px;font-weight:900;font-variant-numeric:tabular-nums" id="bdg-libre-big">—</div>
+          <div style="font-size:11px;margin-top:6px" id="bdg-libre-msg"></div>
+          <!-- Barra visual saldo vs mínimo -->
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+              <span>$0</span><span>Mín $230.000</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px;position:relative">
+              <div id="bdg-libre-bar" style="height:100%;border-radius:4px;transition:width .5s;max-width:100%"></div>
+              <div style="position:absolute;top:0;left:0;height:100%;width:2px;background:var(--amber);left:calc(230000/600000*100%)" title="Mínimo $230.000"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- GRÁFICO DISTRIBUCIÓN -->
+    <div class="chart-card" style="border-color:#8b5cf644">
+      <div class="chart-title" style="color:var(--purple)">🥧 Distribución del Ingreso Mensual</div>
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <canvas id="bdg-donut" width="160" height="160"></canvas>
+        <div id="bdg-legend" style="flex:1;min-width:200px"></div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL MENSUAL -->
+    <div class="chart-card" style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="chart-title" style="margin-bottom:0">📅 Historial de Meses</div>
+        <button onclick="saveMonthSnapshot()" style="padding:6px 14px;background:var(--purple);border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">+ Guardar Mes Actual</button>
+      </div>
+      <div id="bdg-history" style="overflow-x:auto">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Guarda el mes actual para ver el historial aquí</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-budget -->
 
 </div><!-- #main -->
 
@@ -1103,6 +1283,7 @@ function render(){
   if(activeTab==='charts')renderCharts();
   if(activeTab==='dividends')renderDividends();
   if(activeTab==='trading')renderTrading();
+  if(activeTab==='budget')renderBudget();
   if(editOpen)renderEditTable();
 }
 
@@ -1304,13 +1485,232 @@ function drawTrdChart(hist,inicial){
   }
 }
 
-// ── PERSISTENCIA localStorage ─────────────────────────────────────────────────
+// ── PRESUPUESTO ───────────────────────────────────────────────────────────────
+const GASTOS_LABELS = ['Arriendo','Bencina','CAE','Cuentas','Mercadería','Otros','Polla'];
+const AHORROS_FIJOS = { BTC: 40000, APV: 70000, Trading: 20000 };
+const SALDO_MINIMO  = 230000;
+const TOTAL_FIJOS   = Object.values(AHORROS_FIJOS).reduce((a,b)=>a+b,0); // 130000
+
+let budget = {
+  ingreso: 0,
+  gastos:  Object.fromEntries(GASTOS_LABELS.map(g=>[g,0])),
+  split:   60,   // % acciones vs renta fija
+  history: [],   // [{mes, ingreso, gastos, ahorroTotal, libreTotal}]
+};
+
+function calcBudget(){
+  const ingreso = parseInt(document.getElementById('bdg-ingreso-input')?.value)||0;
+  const split   = parseInt(document.getElementById('bdg-split')?.value)||60;
+  budget.ingreso = ingreso;
+  budget.split   = split;
+
+  // Leer gastos
+  GASTOS_LABELS.forEach(g=>{
+    const el = document.getElementById(`bdg-gasto-${g}`);
+    budget.gastos[g] = el ? (parseInt(el.value)||0) : 0;
+  });
+
+  const totalGastos  = Object.values(budget.gastos).reduce((a,b)=>a+b,0);
+  const disponible   = ingreso - totalGastos;
+  // Excedente = disponible - fijos - mínimo libre
+  const excedente    = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
+  const accVar       = Math.round(excedente * split / 100);
+  const rfVar        = excedente - accVar;
+  const totalAhorros = TOTAL_FIJOS + excedente;
+  const libre        = disponible - totalAhorros;
+
+  // Update KPIs
+  const clp = n => '$ '+Math.round(n).toLocaleString('es-CL');
+  const pct  = (n,d) => d>0 ? (n/d*100).toFixed(1)+'%' : '—';
+
+  document.getElementById('bdg-ingreso').textContent    = clp(ingreso);
+  document.getElementById('bdg-gastos').textContent     = clp(totalGastos);
+  document.getElementById('bdg-gastos-pct').textContent = pct(totalGastos,ingreso)+' del ingreso';
+  document.getElementById('bdg-disponible').textContent = clp(disponible);
+  document.getElementById('bdg-ahorros').textContent    = clp(totalAhorros);
+  document.getElementById('bdg-ahorros-pct').textContent= pct(totalAhorros,ingreso)+' del ingreso';
+  document.getElementById('bdg-libre').textContent      = clp(libre);
+
+  document.getElementById('bdg-total-gastos-lbl').textContent  = clp(totalGastos);
+  document.getElementById('bdg-total-ahorros-lbl').textContent = clp(totalAhorros);
+  document.getElementById('bdg-acc-var').textContent  = clp(accVar);
+  document.getElementById('bdg-rf-var').textContent   = clp(rfVar);
+  document.getElementById('bdg-split-lbl').textContent= `${split}% / ${100-split}%`;
+
+  // Saldo libre card
+  const libreCard = document.getElementById('bdg-libre-card');
+  const libreMsg  = document.getElementById('bdg-libre-msg');
+  const libreBar  = document.getElementById('bdg-libre-bar');
+  const libreBig  = document.getElementById('bdg-libre-big');
+  libreBig.textContent = clp(libre);
+  if(libre >= SALDO_MINIMO){
+    libreBig.style.color    = 'var(--green)';
+    libreCard.style.border  = '1px solid #10b98155';
+    libreMsg.style.color    = 'var(--green)';
+    libreMsg.textContent    = `✓ Supera el mínimo en ${clp(libre-SALDO_MINIMO)}`;
+    libreBar.style.background = 'var(--green)';
+  } else if(ingreso > 0){
+    libreBig.style.color    = 'var(--red)';
+    libreCard.style.border  = '1px solid #ef444455';
+    libreMsg.style.color    = 'var(--red)';
+    libreMsg.textContent    = `⚠ Bajo el mínimo — faltan ${clp(SALDO_MINIMO-libre)}`;
+    libreBar.style.background = 'var(--red)';
+  } else {
+    libreBig.style.color = 'var(--sub)';
+    libreMsg.textContent = 'Ingresa tu capital mensual para calcular';
+    libreBar.style.background = 'var(--border)';
+  }
+  const barPct = ingreso>0 ? Math.min(100, libre/ingreso*100) : 0;
+  libreBar.style.width = barPct+'%';
+
+  // Donut
+  if(ingreso > 0){
+    const donutData = [
+      ...GASTOS_LABELS.map(g=>({label:g, value:budget.gastos[g], color:'#EF4444'})).filter(d=>d.value>0),
+      {label:'BTC',       value:AHORROS_FIJOS.BTC,      color:'#F97316'},
+      {label:'APV',       value:AHORROS_FIJOS.APV,      color:'#10B981'},
+      {label:'Trading',   value:AHORROS_FIJOS.Trading,  color:'#F59E0B'},
+      {label:'Acciones',  value:accVar,                  color:'#3B82F6'},
+      {label:'Renta Fija',value:rfVar,                   color:'#06B6D4'},
+      {label:'Libre',     value:Math.max(0,libre),       color:'#8B5CF6'},
+    ].filter(d=>d.value>0);
+    drawBudgetDonut(donutData, ingreso);
+  }
+}
+
+function drawBudgetDonut(data, total){
+  const canvas = document.getElementById('bdg-donut');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,160,160);
+  const cx=80,cy=80,r=60,inn=36;
+  let angle = -Math.PI/2;
+  data.forEach(d=>{
+    const sl = (d.value/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx+inn*Math.cos(angle),cy+inn*Math.sin(angle));
+    ctx.arc(cx,cy,r,angle,angle+sl);
+    ctx.arc(cx,cy,inn,angle+sl,angle,true);
+    ctx.closePath();
+    ctx.fillStyle=d.color; ctx.globalAlpha=0.9; ctx.fill();
+    angle+=sl;
+  });
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#F1F5F9'; ctx.font='bold 10px Inter,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('INGRESO',cx,cy-4);
+  ctx.fillStyle='#94A3B8'; ctx.font='8px Inter,sans-serif';
+  ctx.fillText('MENSUAL',cx,cy+8);
+
+  // Legend
+  const clp = n=>'$ '+Math.round(n).toLocaleString('es-CL');
+  document.getElementById('bdg-legend').innerHTML = data.map(d=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:11px;gap:10px">
+      <div style="display:flex;align-items:center;gap:6px;min-width:100px">
+        <div style="width:8px;height:8px;border-radius:2px;background:${d.color};flex-shrink:0"></div>
+        <span style="color:var(--sub)">${d.label}</span>
+      </div>
+      <span style="font-weight:700;color:${d.color}">${(d.value/total*100).toFixed(1)}%</span>
+      <span style="color:var(--muted);font-size:10px">${clp(d.value)}</span>
+    </div>`).join('');
+}
+
+function renderBudgetGastos(){
+  document.getElementById('bdg-gastos-list').innerHTML = GASTOS_LABELS.map(g=>`
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:12px;font-weight:700;width:90px;color:var(--text)">${g}</div>
+      <input type="number" id="bdg-gasto-${g}" placeholder="0"
+        value="${budget.gastos[g]||''}"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:12px;outline:none"
+        oninput="calcBudget()"/>
+      <div style="font-size:10px;color:var(--muted);width:70px;text-align:right" id="bdg-gasto-${g}-lbl">
+        ${budget.gastos[g]>0?'$ '+budget.gastos[g].toLocaleString('es-CL'):''}
+      </div>
+    </div>`).join('');
+}
+
+function saveBudget(){
+  // persist via saveData
+  saveData();
+  const msg = document.createElement('div');
+  msg.style.cssText='position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:999';
+  msg.textContent='✓ Presupuesto guardado';
+  document.body.appendChild(msg);
+  setTimeout(()=>msg.remove(),2000);
+}
+
+function saveMonthSnapshot(){
+  const ingreso     = budget.ingreso;
+  const totalGastos = Object.values(budget.gastos).reduce((a,b)=>a+b,0);
+  const disponible  = ingreso - totalGastos;
+  const split       = budget.split;
+  const excedente   = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
+  const totalAhorros= TOTAL_FIJOS + excedente;
+  const libre       = disponible - totalAhorros;
+  const now         = new Date();
+  const mes         = now.toLocaleDateString('es-CL',{month:'long',year:'numeric'});
+
+  budget.history.push({ mes, ingreso, gastos:{...budget.gastos}, totalGastos, totalAhorros, libre });
+  saveData();
+  renderBudgetHistory();
+}
+
+function renderBudgetHistory(){
+  const el = document.getElementById('bdg-history');
+  if(!budget.history.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Sin historial aún</div>';
+    return;
+  }
+  const clp = n=>'$ '+Math.round(n).toLocaleString('es-CL');
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:left">Mes</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Ingreso</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Gastos</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Ahorros</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Libre</th>
+      <th style="padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)"></th>
+    </tr></thead>
+    <tbody>${[...budget.history].reverse().map((h,ri)=>{
+      const realI = budget.history.length-1-ri;
+      const libreOk = h.libre >= SALDO_MINIMO;
+      return`<tr style="${ri%2===0?'':'background:#0F162388'}">
+        <td style="padding:9px 12px;font-weight:700">${h.mes}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--green);font-weight:700">${clp(h.ingreso)}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--red)">${clp(h.totalGastos)}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--purple);font-weight:700">${clp(h.totalAhorros)}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:${libreOk?'var(--green)':'var(--red)'}">${clp(h.libre)}</td>
+        <td style="padding:9px 12px;text-align:center">
+          <button onclick="deleteBudgetMonth(${realI})" style="background:#ef444422;border:1px solid #ef444444;color:var(--red);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">✕</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function deleteBudgetMonth(i){
+  if(!confirm('¿Eliminar este mes?')) return;
+  budget.history.splice(i,1);
+  saveData();
+  renderBudgetHistory();
+}
+
+function renderBudget(){
+  // Restaurar inputs con datos guardados
+  const inEl = document.getElementById('bdg-ingreso-input');
+  if(inEl && budget.ingreso) inEl.value = budget.ingreso;
+  const splitEl = document.getElementById('bdg-split');
+  if(splitEl) splitEl.value = budget.split || 60;
+  renderBudgetGastos();
+  calcBudget();
+  renderBudgetHistory();
+}
+
 const STORE_KEY='kinesicfx_v1';
 
 function saveData(){
   try{
     localStorage.setItem(STORE_KEY,JSON.stringify({
-      portfolio,modules,trdHistory,nextId,currency
+      portfolio,modules,trdHistory,nextId,currency,budget
     }));
   }catch(e){console.warn('No se pudo guardar en localStorage',e);}
 }
@@ -1325,6 +1725,12 @@ function loadData(){
     if(d.trdHistory&&Array.isArray(d.trdHistory)) trdHistory=d.trdHistory;
     if(d.nextId) nextId=d.nextId;
     if(d.currency) currency=d.currency;
+    if(d.budget){
+      budget.ingreso = d.budget.ingreso || 0;
+      budget.split   = d.budget.split   || 60;
+      budget.history = d.budget.history || [];
+      if(d.budget.gastos) Object.assign(budget.gastos, d.budget.gastos);
+    }
     return true;
   }catch(e){console.warn('Error cargando datos guardados',e);return false;}
 }
@@ -1339,8 +1745,8 @@ function clearData(){
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}renderTable();}
 function setTab(t){
   activeTab=t;
-  ['table','charts','dividends','trading'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['table','charts','dividends','trading'][i]===t));
+  ['table','charts','dividends','trading','budget'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['table','charts','dividends','trading','budget'][i]===t));
   render();
 }
 function setCurrency(c){
