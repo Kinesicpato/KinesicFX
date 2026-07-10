@@ -155,7 +155,7 @@ table.main-table tr:hover td{background:#2563eb14!important}
 
 <div id="loading">
   <div class="spinner"></div>
-  <div style="color:var(--sub);font-size:13px">Cargando datos desde Google Sheets…</div>
+  <div style="color:var(--sub);font-size:13px">Cargando datos y precios en tiempo real…</div>
 </div>
 
 <div id="header">
@@ -457,10 +457,14 @@ table.main-table tr:hover td{background:#2563eb14!important}
 </div>
 
 <script>
-// ── CONFIGURACIÓN GOOGLE SHEETS (INTEGRADA) ──────────────────────────────
+// ── CONFIGURACIÓN GOOGLE SHEETS ──────────────────────────────────────────
 const GOOGLE_SHEET_ID = '12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo';
 const GOOGLE_API_KEY = 'AIzaSyBfCcPpWnpX1JbYa-UO-SseY1HXnnArSa8';
 const GOOGLE_SHEET_RANGE = 'STOCK TRACKER!A:V';
+
+// ── CONFIGURACIÓN FINNHUB ─────────────────────────────────────────────────
+const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
+const FINNHUB = 'https://finnhub.io/api/v1';
 
 // ── DATOS ──────────────────────────────────────────────────────────────────
 let portfolio = [];
@@ -482,18 +486,116 @@ let budget = { ingreso: 0, gastos: Object.fromEntries(GASTOS_LABELS.map(g=>[g,0]
 
 const STORE_KEY = 'kinesicfx_v1';
 
-// ── FUNCIONES DE GOOGLE SHEETS ────────────────────────────────────────────
-async function syncFromGoogleSheets() {
-  const statusEl = document.getElementById('last-sync');
+// ── FUNCIONES DE PRECIOS EN TIEMPO REAL ──────────────────────────────────
+async function fetchFX() {
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=CLP');
+    const d = await r.json();
+    if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
+  } catch (e) {
+    try {
+      const r2 = await fetch(`${FINNHUB}/forex/rates?base=USD&token=${FINNHUB_KEY}`);
+      const d2 = await r2.json();
+      if (d2.quote?.CLP) fxUSDCLP = d2.quote.CLP;
+    } catch (e2) {}
+  }
+}
+
+async function fetchStockPrices() {
+  const stocks = portfolio.filter(p => p.type === 'stock');
+  if (!stocks.length) return;
+  
+  await Promise.allSettled(stocks.map(async pos => {
+    try {
+      const r = await fetch(`${FINNHUB}/quote?symbol=${pos.ticker}&token=${FINNHUB_KEY}`);
+      const d = await r.json();
+      if (d.c && d.c > 0) {
+        prevPrices[pos.ticker] = prices[pos.ticker] || d.pc || d.c;
+        prices[pos.ticker] = d.c;
+      }
+    } catch (e) { console.warn(`Finnhub quote failed: ${pos.ticker}`, e); }
+  }));
+}
+
+async function fetchCryptoPrices() {
+  const cryptos = portfolio.filter(p => p.type === 'crypto');
+  if (!cryptos.length) return;
+  
+  const CRYPTO_IDS = {
+    BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
+    ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network',
+    LINK: 'chainlink', UNI: 'uniswap', XRP: 'ripple', DOGE: 'dogecoin', LTC: 'litecoin'
+  };
+  
+  try {
+    const ids = cryptos.map(p => CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase()).join(',');
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+    const d = await r.json();
+    cryptos.forEach(p => {
+      const id = CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase();
+      if (d[id]?.usd) {
+        prevPrices[p.ticker] = prices[p.ticker] || d[id].usd;
+        prices[p.ticker] = d[id].usd;
+      }
+    });
+  } catch (e) {
+    // Fallback: Finnhub crypto
+    await Promise.allSettled(cryptos.map(async p => {
+      try {
+        const sym = `BINANCE:${p.ticker}USDT`;
+        const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (d.c && d.c > 0) {
+          prevPrices[p.ticker] = prices[p.ticker] || d.pc || d.c;
+          prices[p.ticker] = d.c;
+        }
+      } catch (e2) {}
+    }));
+  }
+}
+
+async function fetchAllPrices() {
   const dot = document.getElementById('live-dot');
   const lbl = document.getElementById('live-label');
   
-  statusEl.textContent = '⏳ Sincronizando...';
-  statusEl.style.color = 'var(--amber)';
   dot.style.background = 'var(--amber)';
   dot.style.boxShadow = '0 0 8px var(--amber)';
   lbl.style.color = 'var(--amber)';
   lbl.textContent = 'ACTUALIZANDO';
+  
+  try {
+    await Promise.all([fetchFX(), fetchStockPrices(), fetchCryptoPrices()]);
+    updatePriceHistory();
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow = '0 0 8px var(--green)';
+    lbl.style.color = 'var(--green)';
+    lbl.textContent = 'LIVE';
+    isLive = true;
+  } catch (e) {
+    dot.style.background = 'var(--red)';
+    dot.style.boxShadow = 'none';
+    lbl.style.color = 'var(--red)';
+    lbl.textContent = 'ERROR';
+    console.error('fetchAllPrices error:', e);
+  }
+  document.getElementById('update-time').textContent = new Date().toLocaleTimeString('es-CL');
+}
+
+function updatePriceHistory() {
+  portfolio.forEach(p => {
+    if (!priceHist[p.ticker]) priceHist[p.ticker] = [];
+    if (prices[p.ticker]) {
+      priceHist[p.ticker].push(prices[p.ticker]);
+      if (priceHist[p.ticker].length > 50) priceHist[p.ticker].shift();
+    }
+  });
+}
+
+// ── FUNCIONES DE GOOGLE SHEETS ────────────────────────────────────────────
+async function syncFromGoogleSheets() {
+  const statusEl = document.getElementById('last-sync');
+  statusEl.textContent = '⏳ Sincronizando datos...';
+  statusEl.style.color = 'var(--amber)';
 
   try {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${GOOGLE_SHEET_RANGE}?key=${GOOGLE_API_KEY}`;
@@ -513,12 +615,10 @@ async function syncFromGoogleSheets() {
       
       statusEl.textContent = `✅ Sincronizado: ${new Date().toLocaleTimeString()}`;
       statusEl.style.color = 'var(--green)';
-      dot.style.background = 'var(--green)';
-      dot.style.boxShadow = '0 0 8px var(--green)';
-      lbl.style.color = 'var(--green)';
-      lbl.textContent = 'LIVE';
       
       saveData();
+      // Después de sincronizar, actualizar precios
+      await fetchAllPrices();
       render();
     } else {
       throw new Error('No se encontraron datos en la hoja');
@@ -527,10 +627,6 @@ async function syncFromGoogleSheets() {
     console.error('Error:', error);
     statusEl.textContent = '❌ Error: ' + error.message;
     statusEl.style.color = 'var(--red)';
-    dot.style.background = 'var(--red)';
-    dot.style.boxShadow = 'none';
-    lbl.style.color = 'var(--red)';
-    lbl.textContent = 'ERROR';
   }
 }
 
@@ -1363,6 +1459,8 @@ function renderCharts() {
     return `<div class="alloc-item"><div class="alloc-header"><span style="font-weight:700;color:${sc}">${r.ticker}</span><span class="sub">${fmt(alloc, 1)}% · ${fmtM(r.marketValue)}</span></div><div class="alloc-bar"><div class="alloc-fill" style="width:${alloc}%;background:${sc}"></div></div></div>`;
   }).join('');
 
+  drawPnlChart(rows);
+  
   const bg = [...rows].sort((a, b) => b.gainPct - a.gainPct);
   document.getElementById('top-gainers').innerHTML = bg.slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
   document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
@@ -1395,6 +1493,38 @@ function drawDonut(id, data, total) {
   ctx.fillStyle = '#94A3B8';
   ctx.font = '8px Inter,sans-serif';
   ctx.fillText('ASIGNACIÓN', cx, cy + 8);
+}
+
+function drawPnlChart(rows) {
+  const c = document.getElementById('bar-pnl');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.parentElement.clientWidth || 600;
+  c.width = w;
+  ctx.clearRect(0, 0, w, c.height);
+  const sorted = [...rows].sort((a, b) => b.gainDollar - a.gainDollar);
+  const max = Math.max(...sorted.map(r => Math.abs(r.gainDollar)), 1);
+  const bW = Math.max(18, Math.min(40, (w - sorted.length * 8) / sorted.length));
+  const midY = 70;
+  sorted.forEach((r, i) => {
+    const x = i * (bW + 8) + 10, bH = (Math.abs(r.gainDollar) / max) * 55, y = r.gainDollar >= 0 ? midY - bH : midY;
+    ctx.fillStyle = r.gainDollar >= 0 ? '#10B981' : '#EF4444';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(x, y, bW, bH, 3);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#64748B';
+    ctx.font = '9px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(r.ticker, x + bW / 2, 92);
+  });
+  ctx.strokeStyle = '#1E2D45';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, midY);
+  ctx.lineTo(w, midY);
+  ctx.stroke();
 }
 
 // ── RENDER PRINCIPAL ──────────────────────────────────────────────────────
@@ -1453,11 +1583,17 @@ function clearData() {
   }
   
   seedPrices();
+  
+  // Obtener precios en tiempo real
+  await fetchAllPrices();
+  
   document.getElementById('loading').style.display = 'none';
   render();
   
-  // Sincronizar automáticamente cada 5 minutos
+  // Sincronizar datos de Google Sheets cada 5 minutos
   setInterval(syncFromGoogleSheets, 300000);
+  // Actualizar precios cada 30 segundos
+  setInterval(fetchAllPrices, 30000);
 })();
 </script>
 </body>
