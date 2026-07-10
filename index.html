@@ -149,6 +149,9 @@ table.main-table tr:hover td{background:#2563eb14!important}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(max-width:600px){.kpi-value{font-size:15px}}
+
+/* RoundRect polyfill para navegadores antiguos */
+canvas { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -457,6 +460,24 @@ table.main-table tr:hover td{background:#2563eb14!important}
 </div>
 
 <script>
+// ── POLYFILL para roundRect (compatibilidad navegadores) ────────────────
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
+    return this;
+  };
+}
+
 // ── CONFIGURACIÓN GOOGLE SHEETS ──────────────────────────────────────────
 const GOOGLE_SHEET_ID = '12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo';
 const GOOGLE_API_KEY = 'AIzaSyBfCcPpWnpX1JbYa-UO-SseY1HXnnArSa8';
@@ -539,7 +560,6 @@ async function fetchCryptoPrices() {
       }
     });
   } catch (e) {
-    // Fallback: Finnhub crypto
     await Promise.allSettled(cryptos.map(async p => {
       try {
         const sym = `BINANCE:${p.ticker}USDT`;
@@ -617,7 +637,6 @@ async function syncFromGoogleSheets() {
       statusEl.style.color = 'var(--green)';
       
       saveData();
-      // Después de sincronizar, actualizar precios
       await fetchAllPrices();
       render();
     } else {
@@ -688,7 +707,6 @@ function parseGoogleSheetsData(values) {
     }
   }
 
-  // Buscar BTC
   let btcData = null;
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
@@ -735,7 +753,6 @@ function updatePortfolioFromSheet(parsed) {
     }
   });
   
-  // Agregar BTC si existe
   if (parsed.btc && parsed.btc.cantidad > 0) {
     let btc = newPortfolio.find(p => p.ticker === 'BTC');
     if (btc) {
@@ -1282,6 +1299,163 @@ function renderTrading() {
 
   const dateInput = document.getElementById('trd-fecha');
   if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
+  
+  // ── DIBUJAR GRÁFICO DE TRADING ──
+  drawTradingChart(hist, inicial);
+}
+
+function drawTradingChart(hist, inicial) {
+  const canvas = document.getElementById('trd-chart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  const W = container.clientWidth || 500;
+  const H = 300;
+  
+  canvas.width = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  if (hist.length === 0 && inicial === 0) {
+    ctx.fillStyle = '#475569';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Agrega registros para ver el gráfico', W / 2, H / 2);
+    return;
+  }
+
+  // Preparar datos: incluir capital inicial si existe y no está duplicado
+  let dataPoints = [];
+  if (inicial > 0) {
+    dataPoints.push({ fecha: 'Inicio', capital: inicial });
+  }
+  hist.forEach(h => {
+    // Evitar duplicar si la fecha es la misma que el último punto
+    if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
+      dataPoints.push({ fecha: h.fecha, capital: h.capital });
+    }
+  });
+
+  if (dataPoints.length < 2) {
+    ctx.fillStyle = '#475569';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W / 2, H / 2);
+    return;
+  }
+
+  // Encontrar min/max
+  const values = dataPoints.map(d => d.capital);
+  const minVal = Math.min(...values) * 0.97;
+  const maxVal = Math.max(...values) * 1.03;
+  const range = maxVal - minVal || 1;
+
+  const PAD = { top: 20, right: 20, bottom: 40, left: 60 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  // Dibujar grid
+  const gridLines = 5;
+  ctx.strokeStyle = '#1E2D45';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  for (let i = 0; i <= gridLines; i++) {
+    const y = PAD.top + chartH * (1 - i / gridLines);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + chartW, y);
+    ctx.stroke();
+    
+    const val = minVal + (range * i / gridLines);
+    ctx.fillStyle = '#475569';
+    ctx.font = '9px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(currency === 'CLP' ? '$' + Math.round(val * fxUSDCLP / 1000).toLocaleString('es-CL') + 'k' : '$' + fmt(val, 0), PAD.left - 6, y + 3);
+  }
+  ctx.setLineDash([]);
+
+  // Calcular puntos en el canvas
+  const totalPts = dataPoints.length;
+  const points = dataPoints.map((d, i) => {
+    const x = PAD.left + (i / (totalPts - 1)) * chartW;
+    const y = PAD.top + chartH * (1 - (d.capital - minVal) / range);
+    return { x, y, data: d };
+  });
+
+  // Área bajo la curva (gradiente)
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+  grad.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
+  grad.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, PAD.top + chartH);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, PAD.top + chartH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Línea principal
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.strokeStyle = '#F59E0B';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Puntos y etiquetas
+  points.forEach((p, i) => {
+    const isLast = i === points.length - 1;
+    const isFirst = i === 0;
+    
+    // Círculo
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
+    ctx.fill();
+    if (isLast) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    
+    // Etiqueta de fecha (solo algunas)
+    if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
+      ctx.fillStyle = '#64748B';
+      ctx.font = '8px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      const label = p.data.fecha === 'Inicio' ? 'Inicio' : p.data.fecha.slice(5);
+      ctx.fillText(label, p.x, PAD.top + chartH + 14);
+    }
+    
+    // Etiqueta de valor en el último punto
+    if (isLast) {
+      ctx.fillStyle = '#F1F5F9';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(fmtM(p.data.capital), p.x + 10, p.y - 6);
+    }
+  });
+
+  // Línea base (capital inicial)
+  if (inicial > 0) {
+    const baseY = PAD.top + chartH * (1 - (inicial - minVal) / range);
+    ctx.strokeStyle = '#47556966';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, baseY);
+    ctx.lineTo(PAD.left + chartW, baseY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#64748B';
+    ctx.font = '8px Inter, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Base', PAD.left + 4, baseY - 4);
+  }
 }
 
 // ── FUNCIONES DE PRESUPUESTO ──────────────────────────────────────────────
@@ -1577,22 +1751,17 @@ function clearData() {
   loadColors();
   const loaded = loadData();
   
-  // Si no hay datos, sincronizar desde Google Sheets
   if (!loaded || portfolio.length === 0) {
     await syncFromGoogleSheets();
   }
   
   seedPrices();
-  
-  // Obtener precios en tiempo real
   await fetchAllPrices();
   
   document.getElementById('loading').style.display = 'none';
   render();
   
-  // Sincronizar datos de Google Sheets cada 5 minutos
   setInterval(syncFromGoogleSheets, 300000);
-  // Actualizar precios cada 30 segundos
   setInterval(fetchAllPrices, 30000);
 })();
 </script>
