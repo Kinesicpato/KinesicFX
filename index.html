@@ -150,6 +150,7 @@ table.main-table tr:hover td{background:#2563eb14!important}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(max-width:600px){.kpi-value{font-size:15px}}
 
+/* RoundRect polyfill para navegadores antiguos */
 canvas { display: block; width: 100%; height: auto; }
 </style>
 </head>
@@ -199,8 +200,8 @@ canvas { display: block; width: 100%; height: auto; }
     <div class="settings-grid">
       <div class="settings-field">
         <label>📊 Estado</label>
-        <input type="text" id="sync-status" value="Conectado a Google Sheets (CSV)" readonly style="color:var(--green);font-weight:700"/>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sincronización vía CSV pública</div>
+        <input type="text" id="sync-status" value="Conectado a Google Sheets" readonly style="color:var(--green);font-weight:700"/>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">ID: 12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo</div>
       </div>
       <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div style="font-size:9px;color:var(--muted);margin-top:4px">Última sincronización: <span id="last-sync" style="color:var(--sub)">Nunca</span></div>
@@ -459,7 +460,7 @@ canvas { display: block; width: 100%; height: auto; }
 </div>
 
 <script>
-// ── POLYFILL para roundRect ─────────────────────────────────────────────
+// ── POLYFILL para roundRect (compatibilidad navegadores) ────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
     if (r > w / 2) r = w / 2;
@@ -477,8 +478,10 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   };
 }
 
-// ── CONFIGURACIÓN GOOGLE SHEETS (CSV PÚBLICO) ──────────────────────────
-const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQF7Fvk0IAuaqzCVjBUR8FMbOE4YLdJhuq8-mdTFlE6khLZBROHlcX24oOQYWBBgVeC2Atijal5mfZX/pub?gid=139545045&single=true&output=csv';
+// ── CONFIGURACIÓN GOOGLE SHEETS ──────────────────────────────────────────
+const GOOGLE_SHEET_ID = '12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo';
+const GOOGLE_API_KEY = 'AIzaSyBfCcPpWnpX1JbYa-UO-SseY1HXnnArSa8';
+const GOOGLE_SHEET_RANGE = 'STOCK TRACKER!A:V';
 
 // ── CONFIGURACIÓN FINNHUB ─────────────────────────────────────────────────
 const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
@@ -608,26 +611,23 @@ function updatePriceHistory() {
   });
 }
 
-// ── FUNCIONES DE GOOGLE SHEETS (CSV) ────────────────────────────────────
+// ── FUNCIONES DE GOOGLE SHEETS ────────────────────────────────────────────
 async function syncFromGoogleSheets() {
   const statusEl = document.getElementById('last-sync');
-  const dot = document.getElementById('live-dot');
-  const lbl = document.getElementById('live-label');
-  
   statusEl.textContent = '⏳ Sincronizando datos...';
   statusEl.style.color = 'var(--amber)';
-  dot.style.background = 'var(--amber)';
-  dot.style.boxShadow = '0 0 8px var(--amber)';
-  lbl.style.color = 'var(--amber)';
-  lbl.textContent = 'ACTUALIZANDO';
 
   try {
-    const response = await fetch(GOOGLE_SHEETS_CSV_URL);
-    if (!response.ok) throw new Error('No se pudo acceder a la hoja');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${GOOGLE_SHEET_RANGE}?key=${GOOGLE_API_KEY}`;
+    const response = await fetch(url);
     
-    const csvText = await response.text();
-    const data = parseCSV(csvText);
-    const parsed = parseGoogleSheetsData(data);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Error al acceder a la hoja');
+    }
+    
+    const data = await response.json();
+    const parsed = parseGoogleSheetsData(data.values);
     
     if (parsed && parsed.stocks.length > 0) {
       updatePortfolioFromSheet(parsed);
@@ -635,10 +635,6 @@ async function syncFromGoogleSheets() {
       
       statusEl.textContent = `✅ Sincronizado: ${new Date().toLocaleTimeString()}`;
       statusEl.style.color = 'var(--green)';
-      dot.style.background = 'var(--green)';
-      dot.style.boxShadow = '0 0 8px var(--green)';
-      lbl.style.color = 'var(--green)';
-      lbl.textContent = 'LIVE';
       
       saveData();
       await fetchAllPrices();
@@ -650,33 +646,7 @@ async function syncFromGoogleSheets() {
     console.error('Error:', error);
     statusEl.textContent = '❌ Error: ' + error.message;
     statusEl.style.color = 'var(--red)';
-    dot.style.background = 'var(--red)';
-    dot.style.boxShadow = 'none';
-    lbl.style.color = 'var(--red)';
-    lbl.textContent = 'ERROR';
   }
-}
-
-function parseCSV(csvText) {
-  const lines = csvText.split('\n').filter(line => line.trim());
-  return lines.map(line => {
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    values.push(current.trim());
-    return values;
-  });
 }
 
 function parseGoogleSheetsData(values) {
@@ -1330,6 +1300,7 @@ function renderTrading() {
   const dateInput = document.getElementById('trd-fecha');
   if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
   
+  // ── DIBUJAR GRÁFICO DE TRADING ──
   drawTradingChart(hist, inicial);
 }
 
@@ -1354,11 +1325,13 @@ function drawTradingChart(hist, inicial) {
     return;
   }
 
+  // Preparar datos: incluir capital inicial si existe y no está duplicado
   let dataPoints = [];
   if (inicial > 0) {
     dataPoints.push({ fecha: 'Inicio', capital: inicial });
   }
   hist.forEach(h => {
+    // Evitar duplicar si la fecha es la misma que el último punto
     if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
       dataPoints.push({ fecha: h.fecha, capital: h.capital });
     }
@@ -1372,6 +1345,7 @@ function drawTradingChart(hist, inicial) {
     return;
   }
 
+  // Encontrar min/max
   const values = dataPoints.map(d => d.capital);
   const minVal = Math.min(...values) * 0.97;
   const maxVal = Math.max(...values) * 1.03;
@@ -1381,17 +1355,19 @@ function drawTradingChart(hist, inicial) {
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
+  // Dibujar grid
+  const gridLines = 5;
   ctx.strokeStyle = '#1E2D45';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
-  for (let i = 0; i <= 5; i++) {
-    const y = PAD.top + chartH * (1 - i / 5);
+  for (let i = 0; i <= gridLines; i++) {
+    const y = PAD.top + chartH * (1 - i / gridLines);
     ctx.beginPath();
     ctx.moveTo(PAD.left, y);
     ctx.lineTo(PAD.left + chartW, y);
     ctx.stroke();
     
-    const val = minVal + (range * i / 5);
+    const val = minVal + (range * i / gridLines);
     ctx.fillStyle = '#475569';
     ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'right';
@@ -1399,6 +1375,7 @@ function drawTradingChart(hist, inicial) {
   }
   ctx.setLineDash([]);
 
+  // Calcular puntos en el canvas
   const totalPts = dataPoints.length;
   const points = dataPoints.map((d, i) => {
     const x = PAD.left + (i / (totalPts - 1)) * chartW;
@@ -1406,6 +1383,7 @@ function drawTradingChart(hist, inicial) {
     return { x, y, data: d };
   });
 
+  // Área bajo la curva (gradiente)
   const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
   grad.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
   grad.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
@@ -1417,6 +1395,7 @@ function drawTradingChart(hist, inicial) {
   ctx.fillStyle = grad;
   ctx.fill();
 
+  // Línea principal
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) {
@@ -1427,10 +1406,12 @@ function drawTradingChart(hist, inicial) {
   ctx.lineJoin = 'round';
   ctx.stroke();
 
+  // Puntos y etiquetas
   points.forEach((p, i) => {
     const isLast = i === points.length - 1;
     const isFirst = i === 0;
     
+    // Círculo
     ctx.beginPath();
     ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
     ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
@@ -1441,6 +1422,7 @@ function drawTradingChart(hist, inicial) {
       ctx.stroke();
     }
     
+    // Etiqueta de fecha (solo algunas)
     if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
       ctx.fillStyle = '#64748B';
       ctx.font = '8px Inter, sans-serif';
@@ -1449,6 +1431,7 @@ function drawTradingChart(hist, inicial) {
       ctx.fillText(label, p.x, PAD.top + chartH + 14);
     }
     
+    // Etiqueta de valor en el último punto
     if (isLast) {
       ctx.fillStyle = '#F1F5F9';
       ctx.font = 'bold 10px Inter, sans-serif';
@@ -1457,6 +1440,7 @@ function drawTradingChart(hist, inicial) {
     }
   });
 
+  // Línea base (capital inicial)
   if (inicial > 0) {
     const baseY = PAD.top + chartH * (1 - (inicial - minVal) / range);
     ctx.strokeStyle = '#47556966';
