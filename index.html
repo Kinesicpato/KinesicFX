@@ -150,7 +150,6 @@ table.main-table tr:hover td{background:#2563eb14!important}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(max-width:600px){.kpi-value{font-size:15px}}
 
-/* RoundRect polyfill para navegadores antiguos */
 canvas { display: block; width: 100%; height: auto; }
 </style>
 </head>
@@ -498,7 +497,9 @@ let isLive = false;
 let rows = [];
 
 const SECTOR_COLORS = {Technology:'#3B82F6',Financials:'#8B5CF6',Healthcare:'#10B981',Energy:'#F59E0B',Telecom:'#06B6D4',Crypto:'#F97316',Consumer:'#EC4899',Industrials:'#6366F1','Real Estate':'#14B8A6'};
-const GASTOS_LABELS = ['Arriendo','Bencina','CAE','Cuentas','Mercadería','Otros','Polla'];
+
+// ── MODIFICACIÓN: Se agregó "Vacaciones" a la lista de gastos ────────────
+const GASTOS_LABELS = ['Arriendo','Bencina','CAE','Cuentas','Mercadería','Otros','Polla','Vacaciones'];
 const AHORROS_FIJOS = { BTC: 40000, APV: 70000, Trading: 20000 };
 const SALDO_MINIMO = 230000;
 const TOTAL_FIJOS = Object.values(AHORROS_FIJOS).reduce((a,b)=>a+b,0);
@@ -1300,7 +1301,6 @@ function renderTrading() {
   const dateInput = document.getElementById('trd-fecha');
   if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
   
-  // ── DIBUJAR GRÁFICO DE TRADING ──
   drawTradingChart(hist, inicial);
 }
 
@@ -1325,13 +1325,11 @@ function drawTradingChart(hist, inicial) {
     return;
   }
 
-  // Preparar datos: incluir capital inicial si existe y no está duplicado
   let dataPoints = [];
   if (inicial > 0) {
     dataPoints.push({ fecha: 'Inicio', capital: inicial });
   }
   hist.forEach(h => {
-    // Evitar duplicar si la fecha es la misma que el último punto
     if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
       dataPoints.push({ fecha: h.fecha, capital: h.capital });
     }
@@ -1345,7 +1343,6 @@ function drawTradingChart(hist, inicial) {
     return;
   }
 
-  // Encontrar min/max
   const values = dataPoints.map(d => d.capital);
   const minVal = Math.min(...values) * 0.97;
   const maxVal = Math.max(...values) * 1.03;
@@ -1355,19 +1352,17 @@ function drawTradingChart(hist, inicial) {
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  // Dibujar grid
-  const gridLines = 5;
   ctx.strokeStyle = '#1E2D45';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
-  for (let i = 0; i <= gridLines; i++) {
-    const y = PAD.top + chartH * (1 - i / gridLines);
+  for (let i = 0; i <= 5; i++) {
+    const y = PAD.top + chartH * (1 - i / 5);
     ctx.beginPath();
     ctx.moveTo(PAD.left, y);
     ctx.lineTo(PAD.left + chartW, y);
     ctx.stroke();
     
-    const val = minVal + (range * i / gridLines);
+    const val = minVal + (range * i / 5);
     ctx.fillStyle = '#475569';
     ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'right';
@@ -1375,7 +1370,6 @@ function drawTradingChart(hist, inicial) {
   }
   ctx.setLineDash([]);
 
-  // Calcular puntos en el canvas
   const totalPts = dataPoints.length;
   const points = dataPoints.map((d, i) => {
     const x = PAD.left + (i / (totalPts - 1)) * chartW;
@@ -1383,7 +1377,6 @@ function drawTradingChart(hist, inicial) {
     return { x, y, data: d };
   });
 
-  // Área bajo la curva (gradiente)
   const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
   grad.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
   grad.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
@@ -1395,7 +1388,6 @@ function drawTradingChart(hist, inicial) {
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Línea principal
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) {
@@ -1406,12 +1398,10 @@ function drawTradingChart(hist, inicial) {
   ctx.lineJoin = 'round';
   ctx.stroke();
 
-  // Puntos y etiquetas
   points.forEach((p, i) => {
     const isLast = i === points.length - 1;
     const isFirst = i === 0;
     
-    // Círculo
     ctx.beginPath();
     ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
     ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
@@ -1422,7 +1412,6 @@ function drawTradingChart(hist, inicial) {
       ctx.stroke();
     }
     
-    // Etiqueta de fecha (solo algunas)
     if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
       ctx.fillStyle = '#64748B';
       ctx.font = '8px Inter, sans-serif';
@@ -1431,7 +1420,6 @@ function drawTradingChart(hist, inicial) {
       ctx.fillText(label, p.x, PAD.top + chartH + 14);
     }
     
-    // Etiqueta de valor en el último punto
     if (isLast) {
       ctx.fillStyle = '#F1F5F9';
       ctx.font = 'bold 10px Inter, sans-serif';
@@ -1440,7 +1428,6 @@ function drawTradingChart(hist, inicial) {
     }
   });
 
-  // Línea base (capital inicial)
   if (inicial > 0) {
     const baseY = PAD.top + chartH * (1 - (inicial - minVal) / range);
     ctx.strokeStyle = '#47556966';
