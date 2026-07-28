@@ -476,7 +476,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────
 const STORE_KEY = 'kinesicfx_v1';
-const PROXY_URL = 'https://corsproxy.io/?';
+const PROXY_URL = 'https://api.allorigins.win/raw?url=';
 
 // ── DATOS ──────────────────────────────────────────────────────────────────
 let portfolio = [];
@@ -529,10 +529,9 @@ function clearData() {
   location.reload();
 }
 
-// ── PRECIOS CON PROXY ─────────────────────────────────────────────────────
+// ── PRECIOS ──────────────────────────────────────────────────────────────
 async function fetchFX() {
   try {
-    // Usar API sin CORS (exchangerate-api)
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const d = await r.json();
     if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
@@ -543,14 +542,15 @@ async function fetchFX() {
       const meta = d.chart?.result?.[0]?.meta;
       if (meta?.regularMarketPrice) fxUSDCLP = meta.regularMarketPrice;
     } catch(e2) {
-      console.warn('No se pudo obtener FX, usando valor fijo 920');
+      console.warn('No se pudo obtener FX, usando valor 920');
+      fxUSDCLP = 920;
     }
   }
 }
 
 async function fetchStockPrice(ticker) {
   try {
-    // Usar Yahoo Finance con proxy (permite CORS)
+    // Intentar con proxy
     const url = PROXY_URL + `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
     const r = await fetch(url);
     if (!r.ok) return null;
@@ -562,14 +562,13 @@ async function fetchStockPrice(ticker) {
     const prevClose = meta.previousClose || price;
     return { price, prevClose };
   } catch(e) {
-    console.warn(`Error fetching ${ticker}:`, e);
+    console.warn(`No se pudo obtener precio de ${ticker}, usando costo promedio`);
     return null;
   }
 }
 
 async function fetchCryptoPrice(ticker) {
   try {
-    // CoinGecko permite CORS
     const ids = { BTC:'bitcoin', ETH:'ethereum', SOL:'solana' };
     const id = ids[ticker] || ticker.toLowerCase();
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`;
@@ -600,18 +599,25 @@ async function fetchAllPrices() {
     const stocks = portfolio.filter(p => p.type === 'stock');
     for (const pos of stocks) {
       const result = await fetchStockPrice(pos.ticker);
-      if (result) {
+      if (result && result.price > 0) {
         prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
         prices[pos.ticker] = result.price || result.prevClose;
+      } else {
+        // Si no se pudo obtener precio, usar el costo promedio
+        prices[pos.ticker] = pos.avgCost;
+        prevPrices[pos.ticker] = pos.avgCost;
       }
     }
     
     const cryptos = portfolio.filter(p => p.type === 'crypto');
     for (const pos of cryptos) {
       const result = await fetchCryptoPrice(pos.ticker);
-      if (result) {
+      if (result && result.price > 0) {
         prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
         prices[pos.ticker] = result.price || result.prevClose;
+      } else {
+        prices[pos.ticker] = pos.avgCost;
+        prevPrices[pos.ticker] = pos.avgCost;
       }
     }
     
@@ -629,6 +635,7 @@ async function fetchAllPrices() {
     console.error('fetchAllPrices error:', e);
   }
   document.getElementById('update-time').textContent = new Date().toLocaleTimeString('es-CL');
+  render();
 }
 
 function updatePriceHistory() {
@@ -683,15 +690,26 @@ function processFile(file) {
       
       const parsed = parseExcelData(jsonData);
       
-      if (parsed && (parsed.stocks.length > 0 || parsed.modules.apv > 0 || parsed.modules.trading > 0)) {
+      if (parsed) {
         portfolio = parsed.stocks;
-        modules.apv.valor = parsed.modules.apv;
-        modules.apv.costo = parsed.modules.apv;
-        modules.trd.valor = parsed.modules.trading;
-        modules.trd.costo = parsed.modules.trading;
-        if (parsed.modules.rentaFija > 0) window.rentaFijaValor = parsed.modules.rentaFija;
         
-        const msg = `✅ Archivo cargado: ${file.name} (${parsed.stocks.length} posiciones, APV: ${parsed.modules.apv}, Trading: ${parsed.modules.trading})`;
+        // Actualizar módulos
+        if (parsed.modules.apv > 0) {
+          modules.apv.valor = parsed.modules.apv;
+          modules.apv.costo = parsed.modules.apv;
+        }
+        if (parsed.modules.trading > 0) {
+          modules.trd.valor = parsed.modules.trading;
+          modules.trd.costo = parsed.modules.trading;
+        }
+        // Renta Fija = Racional en el Excel
+        if (parsed.modules.rentaFija > 0) {
+          modules.rac.valor = parsed.modules.rentaFija;
+          modules.rac.costo = parsed.modules.rentaFija;
+          window.rentaFijaValor = parsed.modules.rentaFija;
+        }
+        
+        const msg = `✅ Archivo cargado: ${file.name} (${parsed.stocks.length} posiciones, APV: ${parsed.modules.apv}, Renta Fija: ${parsed.modules.rentaFija}, Trading: ${parsed.modules.trading})`;
         status.textContent = msg;
         status.style.color = 'var(--green)';
         document.getElementById('last-sync').textContent = new Date().toLocaleString();
@@ -700,7 +718,7 @@ function processFile(file) {
         saveData();
         fetchAllPrices().then(() => render());
       } else {
-        console.error('❌ No se encontraron datos válidos. parsed:', parsed);
+        console.error('❌ No se encontraron datos válidos.');
         status.textContent = '❌ No se encontraron datos válidos en el archivo';
         status.style.color = 'var(--red)';
       }
@@ -714,7 +732,7 @@ function processFile(file) {
 }
 
 function parseExcelData(jsonData) {
-  if (!jsonData || jsonData.length === 0) return null;
+  if (!jsonData || jsonData.length === 0) return { stocks: [], modules: { apv: 0, rentaFija: 0, trading: 0 } };
   
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
@@ -771,62 +789,62 @@ function parseExcelData(jsonData) {
     const hasData = row.some(cell => cell && String(cell).trim() !== '');
     if (!hasData) continue;
     
-    let ticker = row[0] ? String(row[0]).trim().toUpperCase() : '';
-    if (!ticker) continue;
+    const rowText = row.map(c => String(c || '').toUpperCase()).join(' ');
+    const firstCell = row[0] ? String(row[0]).trim().toUpperCase() : '';
     
-    // IDENTIFICAR MÓDULOS (buscar en toda la fila)
-    const rowText = row.join(' ').toUpperCase();
-    
-    // Módulos especiales
-    if (rowText.includes('APV') && !rowText.includes('TRADING')) {
+    // DETECCIÓN DE MÓDULOS
+    // APV
+    if (firstCell === 'APV' || rowText.includes('APV')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
         if (num > 1000 && num < 10000000) { val = num; break; }
       }
-      modulesData.apv = val || 0;
-      console.log('🏦 APV encontrado:', modulesData.apv);
+      if (val > 0) modulesData.apv = val;
+      console.log('🏦 APV:', modulesData.apv);
       continue;
     }
     
-    if (rowText.includes('CRIPTO') || rowText.includes('BTC') || rowText.includes('BITCOIN')) {
+    // CRIPTO
+    if (firstCell === 'CRIPTO' || rowText.includes('CRIPTO') || rowText.includes('BITCOIN') || rowText.includes('BTC')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
         if (num > 100 && num < 10000000) { val = num; break; }
       }
-      if (val > 0) {
-        modulesData.rentaFija = val;
-        console.log('₿ Cripto encontrado:', val);
-      }
+      if (val > 0) modulesData.rentaFija = val;
+      console.log('₿ Cripto:', val);
       continue;
     }
     
-    if (rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
+    // RENTA FIJA
+    if (firstCell === 'RENTA FIJA' || rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
         if (num > 1000 && num < 10000000) { val = num; break; }
       }
-      modulesData.rentaFija = val || 0;
-      console.log('🏛️ Renta Fija encontrada:', modulesData.rentaFija);
+      if (val > 0) modulesData.rentaFija = val;
+      console.log('🏛️ Renta Fija:', modulesData.rentaFija);
       continue;
     }
     
-    if (rowText.includes('TRADING')) {
+    // TRADING
+    if (firstCell === 'TRADING' || rowText.includes('TRADING')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
         if (num > 100 && num < 10000000) { val = num; break; }
       }
-      modulesData.trading = val || 0;
-      console.log('⚡ Trading encontrado:', modulesData.trading);
+      if (val > 0) modulesData.trading = val;
+      console.log('⚡ Trading:', modulesData.trading);
       continue;
     }
     
     // Saltar filas que no son acciones
-    if (ticker === 'ACTIVO' || ticker === 'SIMBOLO' || ticker === '' || 
-        ticker === 'TOTAL' || ticker === 'TOTAL CLP' || ticker === 'TOTAL USD') {
+    if (firstCell === 'ACTIVO' || firstCell === 'SIMBOLO' || firstCell === '' || 
+        firstCell === 'TOTAL' || firstCell === 'TOTAL CLP' || firstCell === 'TOTAL USD' ||
+        firstCell === 'MES' || firstCell === 'MONTO' || firstCell === 'FECHA') {
       continue;
     }
     
@@ -838,7 +856,8 @@ function parseExcelData(jsonData) {
     const dividend = (idx.dividend >= 0 && idx.dividend < row.length) ? parseFloat(row[idx.dividend]) || 0 : 0;
     const roe = (idx.roe >= 0 && idx.roe < row.length) ? parseFloat(row[idx.roe]) || null : null;
     
-    if (shares > 0 && (price > 0 || cost > 0)) {
+    // Si hay un ticker válido y cantidad > 0
+    if (firstCell && shares > 0 && (price > 0 || cost > 0)) {
       let mappedSector = sector;
       const s = sector.toLowerCase();
       if (s.includes('tech')) mappedSector = 'Technology';
@@ -855,8 +874,8 @@ function parseExcelData(jsonData) {
       
       stocks.push({
         id: nextId++,
-        ticker: ticker,
-        name: ticker,
+        ticker: firstCell,
+        name: firstCell,
         shares: shares,
         avgCost: avgCost,
         annualDivPS: dividend,
@@ -864,7 +883,7 @@ function parseExcelData(jsonData) {
         sector: mappedSector,
         roe: roe
       });
-      console.log('📈 Acción agregada:', ticker, shares, avgCost);
+      console.log('📈 Acción:', firstCell, shares, avgCost);
     }
   }
   
