@@ -214,7 +214,7 @@ canvas { display: block; width: 100%; height: auto; }
       <div class="settings-field">
         <label>📊 Estado</label>
         <input type="text" id="sync-status" value="Carga manual de archivo" readonly style="color:var(--amber);font-weight:700"/>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sube un archivo Excel o CSV</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sube tu archivo Excel</div>
       </div>
       <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div style="font-size:9px;color:var(--muted);margin-top:4px">Última carga: <span id="last-sync" style="color:var(--sub)">Nunca</span></div>
@@ -562,10 +562,13 @@ function processFile(file) {
       // Buscar la hoja STOCK TRACKER
       let sheetName = 'STOCK TRACKER';
       if (!workbook.SheetNames.includes(sheetName)) {
+        // Si no existe, usar la primera hoja
         sheetName = workbook.SheetNames[0];
       }
       const sheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1 });
+      
+      console.log('📊 Datos de la hoja:', jsonData);
       
       // Parsear los datos
       const parsed = parseExcelData(jsonData);
@@ -582,6 +585,7 @@ function processFile(file) {
         saveData();
         fetchAllPrices().then(() => render());
       } else {
+        console.error('❌ No se encontraron datos válidos. parsed:', parsed);
         status.textContent = '❌ No se encontraron datos válidos en el archivo';
         status.style.color = 'var(--red)';
       }
@@ -600,76 +604,155 @@ function parseExcelData(jsonData) {
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
   
-  // Buscar columnas por nombre (flexible)
-  const headers = Object.keys(jsonData[0]);
-  const findCol = (names) => {
-    for (const name of names) {
-      const found = headers.find(h => h.toLowerCase().trim() === name.toLowerCase().trim());
-      if (found) return found;
+  // Buscar la fila de encabezados (fila donde están "Simbolo", "Acciones", etc.)
+  let headerRow = null;
+  let headerIndex = -1;
+  
+  for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+    const row = jsonData[i];
+    if (!row) continue;
+    // Buscar encabezados
+    const hasTicker = row.some(cell => 
+      cell && (String(cell).toLowerCase().includes('simbolo') || 
+               String(cell).toLowerCase().includes('símbolo') ||
+               String(cell).toLowerCase().includes('ticker'))
+    );
+    const hasShares = row.some(cell => 
+      cell && String(cell).toLowerCase().includes('acciones')
+    );
+    const hasCost = row.some(cell => 
+      cell && String(cell).toLowerCase().includes('costo')
+    );
+    const hasPrice = row.some(cell => 
+      cell && String(cell).toLowerCase().includes('precio') && !String(cell).toLowerCase().includes('mercado')
+    );
+    
+    if (hasTicker && hasShares && (hasCost || hasPrice)) {
+      headerRow = row;
+      headerIndex = i;
+      console.log('✅ Encabezados encontrados en fila', i, ':', headerRow);
+      break;
     }
-    return null;
-  };
-  
-  const colTicker = findCol(['Simbolo', 'Símbolo', 'Ticker', 'Symbol']);
-  const colShares = findCol(['Acciones', 'Cantidad', 'Shares', 'Quantity']);
-  const colCost = findCol(['Costo', 'Costo Prom', 'Avg Cost', 'Cost']);
-  const colSector = findCol(['Sector', 'Industria']);
-  const colDividend = findCol(['Dividendos', 'Dividend', 'Div']);
-  const colROE = findCol(['ROE']);
-  
-  if (!colTicker || !colShares || !colCost) {
-    console.warn('No se encontraron columnas necesarias. Columnas disponibles:', headers);
-    return null;
   }
   
-  for (const row of jsonData) {
-    const ticker = String(row[colTicker] || '').trim().toUpperCase();
+  if (!headerRow) {
+    console.warn('⚠️ No se encontraron encabezados. Usando fila 2 como referencia.');
+    headerRow = jsonData[1] || [];
+    headerIndex = 1;
+  }
+  
+  // Mapear índices de columnas
+  const idx = {
+    ticker: headerRow.findIndex(cell => cell && (
+      String(cell).toLowerCase().includes('simbolo') || 
+      String(cell).toLowerCase().includes('símbolo') ||
+      String(cell).toLowerCase().includes('ticker')
+    )),
+    shares: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('acciones')
+    ),
+    price: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('precio') && 
+      !String(cell).toLowerCase().includes('mercado') &&
+      !String(cell).toLowerCase().includes('costo')
+    ),
+    cost: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('costo')
+    ),
+    sector: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('sector')
+    ),
+    dividend: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('dividendo')
+    ),
+    roe: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('roe')
+    ),
+    growthType: headerRow.findIndex(cell => cell && 
+      String(cell).toLowerCase().includes('tipo crec')
+    )
+  };
+  
+  console.log('📌 Índices encontrados:', idx);
+  
+  // Recorrer las filas desde la fila de encabezados + 1
+  for (let i = headerIndex + 1; i < jsonData.length; i++) {
+    const row = jsonData[i];
+    if (!row || row.length < 2) continue;
+    
+    // Saltar filas vacías
+    const hasData = row.some(cell => cell && String(cell).trim() !== '');
+    if (!hasData) continue;
+    
+    // Obtener el ticker
+    let ticker = idx.ticker >= 0 && idx.ticker < row.length ? String(row[idx.ticker] || '').trim().toUpperCase() : '';
+    
+    // Si el ticker está vacío o es "APV", "Cripto", etc., saltar o procesar como módulo
     if (!ticker) continue;
     
-    // Identificar módulos especiales
+    // Identificar módulos especiales (filas donde el ticker es APV, Renta Fija, Trading)
     if (ticker === 'APV') {
-      modulesData.apv = parseFloat(row[colCost]) || 0;
+      const costVal = idx.cost >= 0 && idx.cost < row.length ? parseFloat(row[idx.cost]) : 0;
+      modulesData.apv = costVal || 0;
+      console.log('🏦 APV encontrado:', modulesData.apv);
       continue;
     }
-    if (ticker === 'RENTA FIJA' || ticker === 'RENTA FIJA' || ticker === 'RF') {
-      modulesData.rentaFija = parseFloat(row[colCost]) || 0;
+    if (ticker === 'RENTA FIJA' || ticker === 'RENTA FIJA' || ticker === 'RF' || ticker === 'RENTA FIJA') {
+      const costVal = idx.cost >= 0 && idx.cost < row.length ? parseFloat(row[idx.cost]) : 0;
+      modulesData.rentaFija = costVal || 0;
+      console.log('🏛️ Renta Fija encontrada:', modulesData.rentaFija);
       continue;
     }
     if (ticker === 'TRADING') {
-      modulesData.trading = parseFloat(row[colCost]) || 0;
+      const costVal = idx.cost >= 0 && idx.cost < row.length ? parseFloat(row[idx.cost]) : 0;
+      modulesData.trading = costVal || 0;
+      console.log('⚡ Trading encontrado:', modulesData.trading);
       continue;
     }
-    if (ticker === 'ACTIVO' || ticker === 'CRIPTO' || ticker === '' || ticker === 'SIMBOLO') continue;
+    if (ticker === 'CRIPTO' || ticker === 'ACTIVO' || ticker === 'SIMBOLO' || ticker === '') {
+      continue;
+    }
     
-    const shares = parseFloat(row[colShares]) || 0;
-    const avgCost = parseFloat(row[colCost]) || 0;
+    // Obtener datos de la acción
+    const shares = idx.shares >= 0 && idx.shares < row.length ? parseFloat(row[idx.shares]) || 0 : 0;
+    const price = idx.price >= 0 && idx.price < row.length ? parseFloat(row[idx.price]) || 0 : 0;
+    const cost = idx.cost >= 0 && idx.cost < row.length ? parseFloat(row[idx.cost]) || 0 : 0;
+    const sector = idx.sector >= 0 && idx.sector < row.length ? String(row[idx.sector] || '').trim() : 'Unknown';
+    const dividend = idx.dividend >= 0 && idx.dividend < row.length ? parseFloat(row[idx.dividend]) || 0 : 0;
+    const roe = idx.roe >= 0 && idx.roe < row.length ? parseFloat(row[idx.roe]) || null : null;
     
-    if (shares > 0 && avgCost > 0) {
-      const sector = row[colSector]?.trim() || 'Unknown';
+    // Si hay precio y cantidad, es una acción válida
+    if (shares > 0 && (price > 0 || cost > 0)) {
       // Mapear sector a los que tenemos colores
       let mappedSector = sector;
-      if (sector.includes('Tech')) mappedSector = 'Technology';
-      else if (sector.includes('Financ')) mappedSector = 'Financials';
-      else if (sector.includes('Health')) mappedSector = 'Healthcare';
-      else if (sector.includes('Energy')) mappedSector = 'Energy';
-      else if (sector.includes('Telecom')) mappedSector = 'Telecom';
-      else if (sector.includes('Crypto')) mappedSector = 'Crypto';
-      else if (sector.includes('Consumer')) mappedSector = 'Consumer';
-      else if (sector.includes('Industrial')) mappedSector = 'Industrials';
-      else if (sector.includes('Real Estate')) mappedSector = 'Real Estate';
+      if (sector.toLowerCase().includes('tech')) mappedSector = 'Technology';
+      else if (sector.toLowerCase().includes('financ')) mappedSector = 'Financials';
+      else if (sector.toLowerCase().includes('health')) mappedSector = 'Healthcare';
+      else if (sector.toLowerCase().includes('energy')) mappedSector = 'Energy';
+      else if (sector.toLowerCase().includes('telecom')) mappedSector = 'Telecom';
+      else if (sector.toLowerCase().includes('crypto')) mappedSector = 'Crypto';
+      else if (sector.toLowerCase().includes('consumer')) mappedSector = 'Consumer';
+      else if (sector.toLowerCase().includes('industrial')) mappedSector = 'Industrials';
+      else if (sector.toLowerCase().includes('real estate')) mappedSector = 'Real Estate';
+      
+      // Si no hay precio, usar el costo como precio inicial
+      const avgCost = cost > 0 ? cost : price;
       
       stocks.push({
         ticker: ticker,
         name: ticker,
         shares: shares,
         avgCost: avgCost,
-        annualDivPS: parseFloat(row[colDividend]) || 0,
+        annualDivPS: dividend,
         type: 'stock',
         sector: mappedSector,
-        roe: parseFloat(row[colROE]) || null
+        roe: roe
       });
+      console.log('📈 Acción agregada:', ticker, shares, avgCost);
     }
   }
+  
+  console.log(`✅ ${stocks.length} acciones procesadas`);
   
   return { stocks, modules: modulesData };
 }
@@ -1701,7 +1784,11 @@ function drawPnlChart(rows) {
     ctx.fillStyle = r.gainDollar >= 0 ? '#10B981' : '#EF4444';
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    ctx.roundRect(x, y, bW, bH, 3);
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, bW, bH, 3);
+    } else {
+      ctx.rect(x, y, bW, bH);
+    }
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#64748B';
