@@ -728,17 +728,19 @@ function parseExcelData(jsonData) {
   
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
+  let btcData = null;
   
+  // Buscar encabezados - exactamente como en tu Excel
   let headerRow = null;
   let headerIndex = -1;
   
   for (let i = 0; i < Math.min(10, jsonData.length); i++) {
     const row = jsonData[i];
     if (!row) continue;
+    // Buscar la fila que contiene "Simbolo" y "Acciones"
     const hasTicker = row.some(cell => 
       cell && (String(cell).toLowerCase().includes('simbolo') || 
-               String(cell).toLowerCase().includes('símbolo') ||
-               String(cell).toLowerCase().includes('ticker'))
+               String(cell).toLowerCase().includes('símbolo'))
     );
     const hasShares = row.some(cell => 
       cell && String(cell).toLowerCase().includes('acciones')
@@ -746,7 +748,7 @@ function parseExcelData(jsonData) {
     if (hasTicker && hasShares) {
       headerRow = row;
       headerIndex = i;
-      console.log('✅ Encabezados encontrados en fila', i);
+      console.log('✅ Encabezados encontrados en fila', i, ':', headerRow);
       break;
     }
   }
@@ -756,22 +758,29 @@ function parseExcelData(jsonData) {
     headerIndex = 1;
   }
   
+  // Mapeo exacto de columnas según tu Excel
   const idx = {
-    ticker: headerRow.findIndex(cell => cell && 
-      (String(cell).toLowerCase().includes('simbolo') || 
-       String(cell).toLowerCase().includes('símbolo') ||
-       String(cell).toLowerCase().includes('ticker'))
-    ),
-    shares: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('acciones')),
-    price: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('precio') && !String(cell).toLowerCase().includes('mercado') && !String(cell).toLowerCase().includes('costo')),
-    cost: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('costo')),
-    sector: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('sector')),
-    dividend: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('dividendo')),
-    roe: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('roe'))
+    ticker: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'simbolo'),
+    shares: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'acciones'),
+    price: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'precio'),
+    marketPrice: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'precio mercado'),
+    cost: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'costo'),
+    marketValue: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'valor mercado'),
+    gain: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'ganancia en usd'),
+    growth: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'crecimiento'),
+    growthType: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'tipo crec'),
+    dividend: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'dividendos'),
+    divYield: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'rendimiento actual div'),
+    divCostYield: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'rendimiento div al costo'),
+    incomeDiv: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'ingreso por div'),
+    sector: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'sector'),
+    roe: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'roe'),
+    ret3a: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'retorno 3a')
   };
   
-  console.log('📌 Índices:', idx);
+  console.log('📌 Índices encontrados:', idx);
   
+  // Recorrer todas las filas
   for (let i = 0; i < jsonData.length; i++) {
     const row = jsonData[i];
     if (!row || row.length < 2) continue;
@@ -782,7 +791,8 @@ function parseExcelData(jsonData) {
     const rowText = row.map(c => String(c || '').toUpperCase()).join(' ');
     const firstCell = row[0] ? String(row[0]).trim().toUpperCase() : '';
     
-    // MÓDULOS
+    // ── DETECCIÓN DE MÓDULOS ──
+    // APV
     if (firstCell === 'APV' || rowText.includes('APV')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -794,7 +804,8 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    if (firstCell === 'CRIPTO' || rowText.includes('CRIPTO') || rowText.includes('BITCOIN') || rowText.includes('BTC')) {
+    // CRIPTO
+    if (firstCell === 'CRIPTO' || rowText.includes('CRIPTO') || rowText.includes('BITCOIN')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
@@ -805,6 +816,7 @@ function parseExcelData(jsonData) {
       continue;
     }
     
+    // RENTA FIJA
     if (firstCell === 'RENTA FIJA' || rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -816,6 +828,7 @@ function parseExcelData(jsonData) {
       continue;
     }
     
+    // TRADING
     if (firstCell === 'TRADING' || rowText.includes('TRADING')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -827,20 +840,58 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    if (firstCell === 'ACTIVO' || firstCell === 'SIMBOLO' || firstCell === '' || 
-        firstCell === 'TOTAL' || firstCell === 'TOTAL CLP' || firstCell === 'TOTAL USD' ||
-        firstCell === 'MES' || firstCell === 'MONTO' || firstCell === 'FECHA') {
+    // ── BUSCAR BTC EN LA SECCIÓN CRIPTO TRACKER ──
+    // Buscar la fila que contiene "Mes" y luego extraer BTC
+    if (firstCell === 'MES' || rowText.includes('MES') || rowText.includes('MONTO $')) {
+      // Buscar la siguiente fila que tenga datos de BTC
+      for (let j = i + 1; j < Math.min(i + 5, jsonData.length); j++) {
+        const btcRow = jsonData[j];
+        if (!btcRow || btcRow.length < 5) continue;
+        // Verificar si tiene datos de BTC (columna S = Monto $, T = Monto USD, U = Cantidad BTC, V = Precio)
+        const montoCLP = parseFloat(btcRow[18]) || 0; // Columna S
+        const montoUSD = parseFloat(btcRow[19]) || 0; // Columna T
+        const cantidadBTC = parseFloat(btcRow[20]) || 0; // Columna U
+        const precioBTC = parseFloat(btcRow[21]) || 0; // Columna V
+        const dcaBTC = parseFloat(btcRow[22]) || 0; // Columna W
+        
+        if (cantidadBTC > 0 && precioBTC > 0) {
+          btcData = {
+            cantidad: cantidadBTC,
+            precio: precioBTC,
+            dca: dcaBTC,
+            montoCLP: montoCLP,
+            montoUSD: montoUSD
+          };
+          console.log('₿ BTC encontrado:', btcData);
+          break;
+        }
+      }
       continue;
     }
+    
+    // ── SALTAR FILAS QUE NO SON ACCIONES ──
+    if (firstCell === 'ACTIVO' || firstCell === 'SIMBOLO' || firstCell === '' || 
+        firstCell === 'TOTAL' || firstCell === 'TOTAL CLP' || firstCell === 'TOTAL USD' ||
+        firstCell === 'MES' || firstCell === 'MONTO' || firstCell === 'FECHA' ||
+        firstCell === '=' || firstCell === 'CRIPTO TRACKER' || firstCell === 'KINESIC FX') {
+      continue;
+    }
+    
+    // ── EXTRAER ACCIÓN ──
+    const ticker = (idx.ticker >= 0 && idx.ticker < row.length) ? String(row[idx.ticker] || '').trim().toUpperCase() : '';
+    if (!ticker) continue;
     
     const shares = (idx.shares >= 0 && idx.shares < row.length) ? parseFloat(row[idx.shares]) || 0 : 0;
     const price = (idx.price >= 0 && idx.price < row.length) ? parseFloat(row[idx.price]) || 0 : 0;
     const cost = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) || 0 : 0;
-    const sector = (idx.sector >= 0 && idx.sector < row.length) ? String(row[idx.sector] || '').trim() : 'Unknown';
     const dividend = (idx.dividend >= 0 && idx.dividend < row.length) ? parseFloat(row[idx.dividend]) || 0 : 0;
+    const sector = (idx.sector >= 0 && idx.sector < row.length) ? String(row[idx.sector] || '').trim() : 'Unknown';
     const roe = (idx.roe >= 0 && idx.roe < row.length) ? parseFloat(row[idx.roe]) || null : null;
+    const growth = (idx.growth >= 0 && idx.growth < row.length) ? parseFloat(row[idx.growth]) || null : null;
+    const growthType = (idx.growthType >= 0 && idx.growthType < row.length) ? String(row[idx.growthType] || '').trim() : '';
     
-    if (firstCell && shares > 0 && (price > 0 || cost > 0)) {
+    if (shares > 0 && (price > 0 || cost > 0)) {
+      // Mapear sector
       let mappedSector = sector;
       const s = sector.toLowerCase();
       if (s.includes('tech')) mappedSector = 'Technology';
@@ -852,25 +903,48 @@ function parseExcelData(jsonData) {
       else if (s.includes('consumer')) mappedSector = 'Consumer';
       else if (s.includes('industrial')) mappedSector = 'Industrials';
       else if (s.includes('real estate')) mappedSector = 'Real Estate';
+      else if (s.includes('materials')) mappedSector = 'Materials';
+      else if (s.includes('staples')) mappedSector = 'Consumer';
       
       const avgCost = cost > 0 ? cost : price;
       
       stocks.push({
         id: nextId++,
-        ticker: firstCell,
-        name: firstCell,
+        ticker: ticker,
+        name: ticker,
         shares: shares,
         avgCost: avgCost,
         annualDivPS: dividend,
         type: 'stock',
         sector: mappedSector,
-        roe: roe
+        roe: roe,
+        growth: growth,
+        growthType: growthType
       });
-      console.log('📈 Acción:', firstCell, shares, avgCost);
+      console.log('📈 Acción:', ticker, shares, avgCost, 'Sector:', mappedSector);
     }
   }
   
-  console.log(`✅ ${stocks.length} acciones procesadas`);
+  // ── AGREGAR BTC AL PORTFOLIO ──
+  if (btcData && btcData.cantidad > 0) {
+    const avgCost = btcData.dca > 0 ? btcData.dca : btcData.precio;
+    stocks.push({
+      id: nextId++,
+      ticker: 'BTC',
+      name: 'Bitcoin',
+      shares: btcData.cantidad,
+      avgCost: avgCost,
+      annualDivPS: 0,
+      type: 'crypto',
+      sector: 'Crypto',
+      roe: null,
+      growth: null,
+      growthType: ''
+    });
+    console.log('₿ BTC agregado al portafolio:', btcData.cantidad, 'a $' + avgCost);
+  }
+  
+  console.log(`✅ ${stocks.length} acciones procesadas (incluyendo BTC)`);
   console.log('📦 Módulos:', modulesData);
   
   return { stocks, modules: modulesData };
