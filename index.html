@@ -182,7 +182,6 @@ canvas { display: block; width: 100%; height: auto; }
     <div class="live-label" id="live-label" style="color:var(--muted)">CARGANDO</div>
   </div>
 </div>
-
 <div id="settings-panel" style="display:none;max-width:1440px;margin:0 auto 16px auto;padding:0 18px">
   <div class="settings-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -476,7 +475,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────
 const STORE_KEY = 'kinesicfx_v1';
-const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
+const FINNHUB = 'https://finnhub.io/api/v1';
 
 // ── DATOS ──────────────────────────────────────────────────────────────────
 let portfolio = [];
@@ -529,7 +529,7 @@ function clearData() {
   location.reload();
 }
 
-// ── PRECIOS ──────────────────────────────────────────────────────────────
+// ── PRECIOS CON FINNHUB ──────────────────────────────────────────────────
 async function fetchFX() {
   try {
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -537,50 +537,52 @@ async function fetchFX() {
     if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
   } catch(e) {
     try {
-      const r = await fetch(PROXY_URL + 'https://query1.finance.yahoo.com/v8/finance/chart/USDCLP=X');
-      const d = await r.json();
-      const meta = d.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) fxUSDCLP = meta.regularMarketPrice;
+      const r2 = await fetch(`${FINNHUB}/forex/rates?base=USD&token=${FINNHUB_KEY}`);
+      const d2 = await r2.json();
+      if (d2.quote?.CLP) fxUSDCLP = d2.quote.CLP;
     } catch(e2) {
       console.warn('No se pudo obtener FX, usando valor 920');
-      fxUSDCLP = 920;
     }
   }
 }
 
 async function fetchStockPrice(ticker) {
   try {
-    // Intentar con proxy
-    const url = PROXY_URL + `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
+    const r = await fetch(`${FINNHUB}/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
     const d = await r.json();
-    const result = d.chart?.result?.[0];
-    if (!result) return null;
-    const meta = result.meta;
-    const price = meta.regularMarketPrice || meta.previousClose || 0;
-    const prevClose = meta.previousClose || price;
-    return { price, prevClose };
+    if (d.c && d.c > 0) {
+      return { price: d.c, prevClose: d.pc || d.c };
+    }
+    return null;
   } catch(e) {
-    console.warn(`No se pudo obtener precio de ${ticker}, usando costo promedio`);
+    console.warn(`Finnhub falló para ${ticker}, usando costo promedio`);
     return null;
   }
 }
 
 async function fetchCryptoPrice(ticker) {
   try {
-    const ids = { BTC:'bitcoin', ETH:'ethereum', SOL:'solana' };
-    const id = ids[ticker] || ticker.toLowerCase();
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
+    const CRYPTO_IDS = {
+      BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
+      ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network',
+      LINK: 'chainlink', UNI: 'uniswap', XRP: 'ripple', DOGE: 'dogecoin', LTC: 'litecoin'
+    };
+    const id = CRYPTO_IDS[ticker] || ticker.toLowerCase();
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
     const d = await r.json();
     if (d[id]?.usd) {
       return { price: d[id].usd, prevClose: d[id].usd };
     }
     return null;
   } catch(e) {
-    console.warn(`Error fetching crypto ${ticker}:`, e);
+    try {
+      const sym = `BINANCE:${ticker}USDT`;
+      const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
+      const d = await r.json();
+      if (d.c && d.c > 0) {
+        return { price: d.c, prevClose: d.pc || d.c };
+      }
+    } catch(e2) {}
     return null;
   }
 }
@@ -602,10 +604,6 @@ async function fetchAllPrices() {
       if (result && result.price > 0) {
         prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
         prices[pos.ticker] = result.price || result.prevClose;
-      } else {
-        // Si no se pudo obtener precio, usar el costo promedio
-        prices[pos.ticker] = pos.avgCost;
-        prevPrices[pos.ticker] = pos.avgCost;
       }
     }
     
@@ -615,9 +613,6 @@ async function fetchAllPrices() {
       if (result && result.price > 0) {
         prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
         prices[pos.ticker] = result.price || result.prevClose;
-      } else {
-        prices[pos.ticker] = pos.avgCost;
-        prevPrices[pos.ticker] = pos.avgCost;
       }
     }
     
@@ -635,7 +630,6 @@ async function fetchAllPrices() {
     console.error('fetchAllPrices error:', e);
   }
   document.getElementById('update-time').textContent = new Date().toLocaleTimeString('es-CL');
-  render();
 }
 
 function updatePriceHistory() {
@@ -693,7 +687,6 @@ function processFile(file) {
       if (parsed) {
         portfolio = parsed.stocks;
         
-        // Actualizar módulos
         if (parsed.modules.apv > 0) {
           modules.apv.valor = parsed.modules.apv;
           modules.apv.costo = parsed.modules.apv;
@@ -702,7 +695,6 @@ function processFile(file) {
           modules.trd.valor = parsed.modules.trading;
           modules.trd.costo = parsed.modules.trading;
         }
-        // Renta Fija = Racional en el Excel
         if (parsed.modules.rentaFija > 0) {
           modules.rac.valor = parsed.modules.rentaFija;
           modules.rac.costo = parsed.modules.rentaFija;
@@ -737,7 +729,6 @@ function parseExcelData(jsonData) {
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
   
-  // Buscar encabezados
   let headerRow = null;
   let headerIndex = -1;
   
@@ -781,7 +772,6 @@ function parseExcelData(jsonData) {
   
   console.log('📌 Índices:', idx);
   
-  // Recorrer todas las filas
   for (let i = 0; i < jsonData.length; i++) {
     const row = jsonData[i];
     if (!row || row.length < 2) continue;
@@ -792,8 +782,7 @@ function parseExcelData(jsonData) {
     const rowText = row.map(c => String(c || '').toUpperCase()).join(' ');
     const firstCell = row[0] ? String(row[0]).trim().toUpperCase() : '';
     
-    // DETECCIÓN DE MÓDULOS
-    // APV
+    // MÓDULOS
     if (firstCell === 'APV' || rowText.includes('APV')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -805,7 +794,6 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    // CRIPTO
     if (firstCell === 'CRIPTO' || rowText.includes('CRIPTO') || rowText.includes('BITCOIN') || rowText.includes('BTC')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -817,7 +805,6 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    // RENTA FIJA
     if (firstCell === 'RENTA FIJA' || rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -829,7 +816,6 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    // TRADING
     if (firstCell === 'TRADING' || rowText.includes('TRADING')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
@@ -841,14 +827,12 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    // Saltar filas que no son acciones
     if (firstCell === 'ACTIVO' || firstCell === 'SIMBOLO' || firstCell === '' || 
         firstCell === 'TOTAL' || firstCell === 'TOTAL CLP' || firstCell === 'TOTAL USD' ||
         firstCell === 'MES' || firstCell === 'MONTO' || firstCell === 'FECHA') {
       continue;
     }
     
-    // Extraer acción
     const shares = (idx.shares >= 0 && idx.shares < row.length) ? parseFloat(row[idx.shares]) || 0 : 0;
     const price = (idx.price >= 0 && idx.price < row.length) ? parseFloat(row[idx.price]) || 0 : 0;
     const cost = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) || 0 : 0;
@@ -856,7 +840,6 @@ function parseExcelData(jsonData) {
     const dividend = (idx.dividend >= 0 && idx.dividend < row.length) ? parseFloat(row[idx.dividend]) || 0 : 0;
     const roe = (idx.roe >= 0 && idx.roe < row.length) ? parseFloat(row[idx.roe]) || null : null;
     
-    // Si hay un ticker válido y cantidad > 0
     if (firstCell && shares > 0 && (price > 0 || cost > 0)) {
       let mappedSector = sector;
       const s = sector.toLowerCase();
@@ -1044,8 +1027,7 @@ function renderKPI() {
     document.getElementById(pfx + '-gain').className = 'seg-gain ' + (m.valor > 0 ? cc(g) : 'sub');
   });
 }
-
-function renderTable() {
+  function renderTable() {
   const sorted = [...rows].sort((a, b) => {
     const av = typeof a[sortKey] === 'string' ? a[sortKey] : (a[sortKey] ?? -Infinity);
     const bv = typeof b[sortKey] === 'string' ? b[sortKey] : (b[sortKey] ?? -Infinity);
@@ -1529,8 +1511,7 @@ function drawTradingChart(hist, inicial) {
     ctx.fillText('Base', PAD.left + 4, baseY - 4);
   }
 }
-
-// ── PRESUPUESTO ──────────────────────────────────────────────────────────────
+  // ── PRESUPUESTO ──────────────────────────────────────────────────────────────
 function calcBudget() {
   const ingreso = parseInt(document.getElementById('bdg-ingreso-input')?.value) || 0;
   const split = parseInt(document.getElementById('bdg-split')?.value) || 60;
@@ -1805,7 +1786,7 @@ function render() {
   document.getElementById('loading').style.display = 'none';
   render();
   
-  setInterval(fetchAllPrices, 60000);
+  setInterval(fetchAllPrices, 30000);
 })();
 </script>
 </body>
