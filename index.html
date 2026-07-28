@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>KinesicFX — Portfolio</title>
-<!-- SheetJS para leer archivos Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -29,7 +28,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-
 #header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
 .logo{display:flex;align-items:center;gap:12px}
 .logo-icon{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -43,15 +41,12 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .currency-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .curr-btn{padding:5px 14px;border:none;cursor:pointer;font-size:11px;font-weight:700;transition:all .15s;background:transparent;color:var(--muted)}
 .curr-btn.active{background:var(--accent);color:#fff}
-
 #main{max-width:1440px;margin:0 auto;padding:16px 18px}
-
 .kpi-grand{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:10px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
 .kpi-label{font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
 .kpi-value{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
 .kpi-sub{font-size:10px;color:var(--sub);margin-top:4px}
-
 .seg-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
 .seg-card{background:var(--card);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
 .seg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
@@ -63,7 +58,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .seg-val{font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .seg-meta{font-size:10px;color:var(--sub);margin-top:3px}
 .seg-gain{font-size:11px;font-weight:700;margin-top:2px}
-
 .tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:14px;align-items:center;flex-wrap:wrap}
 .tab{padding:8px 16px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:transparent;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s}
 .tab.active{background:var(--accent);color:#fff;border-bottom-color:var(--accent)}
@@ -71,7 +65,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-edit.open{background:#f59e0b22;border-color:var(--amber)}
 .btn-upload{background:var(--green);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-upload:hover{opacity:.85}
-
 .settings-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .settings-field label{display:block;font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
@@ -85,7 +78,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-sync:hover{opacity:.85}
 .btn-sync.amber{background:var(--amber);color:#000}
 .btn-sync.purple{background:var(--purple)}
-
 #edit-panel{display:none;margin-bottom:14px}
 .edit-section{background:var(--card);border-radius:12px;padding:16px;margin-bottom:10px}
 .edit-section.border-amber{border:1px solid #f59e0b55}
@@ -100,7 +92,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .edit-field input:focus,.edit-field select:focus{border-color:var(--accent)}
 .btn-add{padding:8px 0;width:100%;background:var(--accent);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 .btn-add:hover{opacity:.85}
-
 .pos-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
 .pos-table th{background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 .pos-table td{padding:6px 6px;border-bottom:1px solid #1E2D4533;vertical-align:middle}
@@ -112,7 +103,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-del-row:hover{background:#ef444433}
 .saved-flash{animation:flash .7s ease}
 @keyframes flash{0%{background:#10b98133}100%{background:transparent}}
-
 .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
 table.main-table{width:100%;border-collapse:collapse;font-size:12px}
 table.main-table th{padding:10px 11px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
@@ -126,7 +116,6 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
 .bar-bg{height:4px;background:var(--border);border-radius:2px;width:56px}
 .bar-fill{height:100%;border-radius:2px;transition:width .5s}
-
 .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
 .chart-title{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
@@ -138,7 +127,6 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .alloc-header{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
 .alloc-bar{height:6px;background:var(--border);border-radius:3px}
 .alloc-fill{height:100%;border-radius:3px;transition:width .6s ease}
-
 .div-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 .div-summary{background:var(--card);border:1px solid #f59e0b44;border-radius:12px;padding:18px}
 .div-big{font-size:30px;font-weight:900;color:var(--amber);margin:6px 0 2px}
@@ -147,15 +135,12 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .mini-label{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .mini-val{font-size:15px;font-weight:800;color:var(--amber);margin-top:2px}
 #bdg-libre-card{border-radius:12px;padding:16px}
-
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(max-width:600px){.kpi-value{font-size:15px}}
-
 canvas { display: block; width: 100%; height: auto; }
-
 .file-drop-zone{border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;margin-bottom:16px;transition:all .3s;cursor:pointer}
 .file-drop-zone:hover{border-color:var(--accent);background:var(--surface)}
 .file-drop-zone.dragover{border-color:var(--green);background:#10b98122}
@@ -188,7 +173,7 @@ canvas { display: block; width: 100%; height: auto; }
     <button onclick="document.getElementById('file-input').click()" class="btn-upload">📤 Subir Portafolio</button>
     <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event)"/>
     <button onclick="toggleSettings()" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700">⚙️</button>
-    <button onclick="clearData()" title="Borrar todos los datos guardados" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:700">🗑</button>
+    <button onclick="clearData()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:700">🗑</button>
     <div style="text-align:right">
       <div style="font-size:9px;color:var(--muted)">ACTUALIZACIÓN</div>
       <div class="update-time" id="update-time">—</div>
@@ -211,14 +196,8 @@ canvas { display: block; width: 100%; height: auto; }
       </div>
     </div>
     <div class="settings-grid">
-      <div class="settings-field">
-        <label>📊 Estado</label>
-        <input type="text" id="sync-status" value="Carga manual de archivo" readonly style="color:var(--amber);font-weight:700"/>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sube tu archivo Excel</div>
-      </div>
-      <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Última carga: <span id="last-sync" style="color:var(--sub)">Nunca</span></div>
-      </div>
+      <div class="settings-field"><label>📊 Estado</label><input type="text" id="sync-status" value="Carga manual de archivo" readonly style="color:var(--amber);font-weight:700"/><div style="font-size:9px;color:var(--muted);margin-top:4px">Sube tu archivo Excel</div></div>
+      <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end"><div style="font-size:9px;color:var(--muted);margin-top:4px">Última carga: <span id="last-sync" style="color:var(--sub)">Nunca</span></div></div>
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">🎨 Personalizar Colores</div>
@@ -239,7 +218,6 @@ canvas { display: block; width: 100%; height: auto; }
 </div>
 
 <div id="main">
-  <!-- ZONA DE CARGA DE ARCHIVO -->
   <div class="file-drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
     <div class="icon">📊</div>
     <div class="text">Arrastra o haz clic para subir tu archivo de portafolio</div>
@@ -397,10 +375,7 @@ canvas { display: block; width: 100%; height: auto; }
           <button onclick="addTrdEntry()" style="width:100%;padding:9px;background:var(--amber);border:none;border-radius:7px;color:#000;font-size:12px;font-weight:800;cursor:pointer">+ Agregar</button>
           <div id="trd-entry-msg" style="font-size:11px;height:16px"></div>
         </div>
-        <div style="margin-top:16px">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Historial</div>
-          <div id="trd-history-list" style="max-height:220px;overflow-y:auto"></div>
-        </div>
+        <div style="margin-top:16px"><div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Historial</div><div id="trd-history-list" style="max-height:220px;overflow-y:auto"></div></div>
       </div>
       <div class="chart-card" style="border-color:#f59e0b44">
         <div class="chart-title" style="color:var(--amber)">📈 Evolución del Capital</div>
@@ -481,26 +456,27 @@ canvas { display: block; width: 100%; height: auto; }
 </div>
 
 <script>
-// ── POLYFILL para roundRect ─────────────────────────────────────────────
+// ── POLYFILL ──────────────────────────────────────────────────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (r > w / 2) r = w / 2;
-    if (r > h / 2) r = h / 2;
-    this.moveTo(x + r, y);
-    this.lineTo(x + w - r, y);
-    this.quadraticCurveTo(x + w, y, x + w, y + r);
-    this.lineTo(x + w, y + h - r);
-    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    this.lineTo(x + r, y + h);
-    this.quadraticCurveTo(x, y + h, x, y + h - r);
-    this.lineTo(x, y + r);
-    this.quadraticCurveTo(x, y, x + r, y);
+    if (r > w/2) r = w/2;
+    if (r > h/2) r = h/2;
+    this.moveTo(x+r, y);
+    this.lineTo(x+w-r, y);
+    this.quadraticCurveTo(x+w, y, x+w, y+r);
+    this.lineTo(x+w, y+h-r);
+    this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    this.lineTo(x+r, y+h);
+    this.quadraticCurveTo(x, y+h, x, y+h-r);
+    this.lineTo(x, y+r);
+    this.quadraticCurveTo(x, y, x+r, y);
     return this;
   };
 }
 
-// ── CONFIGURACIÓN ─────────────────────────────────────────────────────────
+// ── CONSTANTES ────────────────────────────────────────────────────────────
 const STORE_KEY = 'kinesicfx_v1';
+const PROXY_URL = 'https://corsproxy.io/?';
 
 // ── DATOS ──────────────────────────────────────────────────────────────────
 let portfolio = [];
@@ -538,13 +514,13 @@ function loadData() {
       if (d.budget.gastos) Object.assign(budget.gastos, d.budget.gastos);
     }
     return true;
-  } catch (e) { return false; }
+  } catch(e) { return false; }
 }
 
 function saveData() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({ portfolio, modules, trdHistory, nextId, currency, budget }));
-  } catch (e) { console.warn('No se pudo guardar', e); }
+  } catch(e) { console.warn('No se pudo guardar', e); }
 }
 
 function clearData() {
@@ -553,27 +529,29 @@ function clearData() {
   location.reload();
 }
 
-// ── FUNCIONES DE PRECIOS ──────────────────────────────────────────────────
+// ── PRECIOS CON PROXY ─────────────────────────────────────────────────────
 async function fetchFX() {
   try {
+    // Usar API sin CORS (exchangerate-api)
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const d = await r.json();
     if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
-  } catch (e) {
+  } catch(e) {
     try {
-      const cached = localStorage.getItem('kinesicfx_fx');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && parsed.CLP) fxUSDCLP = parsed.CLP;
-      }
-    } catch (e2) {}
+      const r = await fetch(PROXY_URL + 'https://query1.finance.yahoo.com/v8/finance/chart/USDCLP=X');
+      const d = await r.json();
+      const meta = d.chart?.result?.[0]?.meta;
+      if (meta?.regularMarketPrice) fxUSDCLP = meta.regularMarketPrice;
+    } catch(e2) {
+      console.warn('No se pudo obtener FX, usando valor fijo 920');
+    }
   }
-  localStorage.setItem('kinesicfx_fx', JSON.stringify({ CLP: fxUSDCLP, timestamp: Date.now() }));
 }
 
 async function fetchStockPrice(ticker) {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+    // Usar Yahoo Finance con proxy (permite CORS)
+    const url = PROXY_URL + `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const d = await r.json();
@@ -583,7 +561,7 @@ async function fetchStockPrice(ticker) {
     const price = meta.regularMarketPrice || meta.previousClose || 0;
     const prevClose = meta.previousClose || price;
     return { price, prevClose };
-  } catch (e) {
+  } catch(e) {
     console.warn(`Error fetching ${ticker}:`, e);
     return null;
   }
@@ -591,13 +569,8 @@ async function fetchStockPrice(ticker) {
 
 async function fetchCryptoPrice(ticker) {
   try {
-    const ids = {
-      'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana',
-      'BNB': 'binancecoin', 'ADA': 'cardano', 'DOT': 'polkadot',
-      'AVAX': 'avalanche-2', 'MATIC': 'matic-network', 'LINK': 'chainlink',
-      'UNI': 'uniswap', 'XRP': 'ripple', 'DOGE': 'dogecoin',
-      'LTC': 'litecoin'
-    };
+    // CoinGecko permite CORS
+    const ids = { BTC:'bitcoin', ETH:'ethereum', SOL:'solana' };
     const id = ids[ticker] || ticker.toLowerCase();
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`;
     const r = await fetch(url);
@@ -607,7 +580,7 @@ async function fetchCryptoPrice(ticker) {
       return { price: d[id].usd, prevClose: d[id].usd };
     }
     return null;
-  } catch (e) {
+  } catch(e) {
     console.warn(`Error fetching crypto ${ticker}:`, e);
     return null;
   }
@@ -616,7 +589,6 @@ async function fetchCryptoPrice(ticker) {
 async function fetchAllPrices() {
   const dot = document.getElementById('live-dot');
   const lbl = document.getElementById('live-label');
-  
   dot.style.background = 'var(--amber)';
   dot.style.boxShadow = '0 0 8px var(--amber)';
   lbl.style.color = 'var(--amber)';
@@ -649,7 +621,7 @@ async function fetchAllPrices() {
     lbl.style.color = 'var(--green)';
     lbl.textContent = 'LIVE';
     isLive = true;
-  } catch (e) {
+  } catch(e) {
     dot.style.background = 'var(--red)';
     dot.style.boxShadow = 'none';
     lbl.style.color = 'var(--red)';
@@ -679,14 +651,9 @@ function handleFileUpload(event) {
 
 function setupDropZone() {
   const zone = document.getElementById('drop-zone');
-  zone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    zone.classList.add('dragover');
-  });
-  zone.addEventListener('dragleave', () => {
-    zone.classList.remove('dragover');
-  });
-  zone.addEventListener('drop', (e) => {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+  zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
@@ -717,8 +684,12 @@ function processFile(file) {
       const parsed = parseExcelData(jsonData);
       
       if (parsed && (parsed.stocks.length > 0 || parsed.modules.apv > 0 || parsed.modules.trading > 0)) {
-        updatePortfolioFromSheet(parsed);
-        updateModulesFromSheet(parsed);
+        portfolio = parsed.stocks;
+        modules.apv.valor = parsed.modules.apv;
+        modules.apv.costo = parsed.modules.apv;
+        modules.trd.valor = parsed.modules.trading;
+        modules.trd.costo = parsed.modules.trading;
+        if (parsed.modules.rentaFija > 0) window.rentaFijaValor = parsed.modules.rentaFija;
         
         const msg = `✅ Archivo cargado: ${file.name} (${parsed.stocks.length} posiciones, APV: ${parsed.modules.apv}, Trading: ${parsed.modules.trading})`;
         status.textContent = msg;
@@ -733,7 +704,7 @@ function processFile(file) {
         status.textContent = '❌ No se encontraron datos válidos en el archivo';
         status.style.color = 'var(--red)';
       }
-    } catch (err) {
+    } catch(err) {
       console.error('Error procesando archivo:', err);
       status.textContent = '❌ Error al procesar el archivo: ' + err.message;
       status.style.color = 'var(--red)';
@@ -748,6 +719,7 @@ function parseExcelData(jsonData) {
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
   
+  // Buscar encabezados
   let headerRow = null;
   let headerIndex = -1;
   
@@ -765,7 +737,7 @@ function parseExcelData(jsonData) {
     if (hasTicker && hasShares) {
       headerRow = row;
       headerIndex = i;
-      console.log('✅ Encabezados encontrados en fila', i, ':', headerRow);
+      console.log('✅ Encabezados encontrados en fila', i);
       break;
     }
   }
@@ -776,35 +748,22 @@ function parseExcelData(jsonData) {
   }
   
   const idx = {
-    ticker: headerRow.findIndex(cell => cell && (
-      String(cell).toLowerCase().includes('simbolo') || 
-      String(cell).toLowerCase().includes('símbolo') ||
-      String(cell).toLowerCase().includes('ticker')
-    )),
-    shares: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('acciones')
+    ticker: headerRow.findIndex(cell => cell && 
+      (String(cell).toLowerCase().includes('simbolo') || 
+       String(cell).toLowerCase().includes('símbolo') ||
+       String(cell).toLowerCase().includes('ticker'))
     ),
-    price: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('precio') && 
-      !String(cell).toLowerCase().includes('mercado') &&
-      !String(cell).toLowerCase().includes('costo')
-    ),
-    cost: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('costo')
-    ),
-    sector: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('sector')
-    ),
-    dividend: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('dividendo')
-    ),
-    roe: headerRow.findIndex(cell => cell && 
-      String(cell).toLowerCase().includes('roe')
-    )
+    shares: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('acciones')),
+    price: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('precio') && !String(cell).toLowerCase().includes('mercado') && !String(cell).toLowerCase().includes('costo')),
+    cost: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('costo')),
+    sector: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('sector')),
+    dividend: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('dividendo')),
+    roe: headerRow.findIndex(cell => cell && String(cell).toLowerCase().includes('roe'))
   };
   
-  console.log('📌 Índices encontrados:', idx);
+  console.log('📌 Índices:', idx);
   
+  // Recorrer todas las filas
   for (let i = 0; i < jsonData.length; i++) {
     const row = jsonData[i];
     if (!row || row.length < 2) continue;
@@ -815,32 +774,26 @@ function parseExcelData(jsonData) {
     let ticker = row[0] ? String(row[0]).trim().toUpperCase() : '';
     if (!ticker) continue;
     
+    // IDENTIFICAR MÓDULOS (buscar en toda la fila)
+    const rowText = row.join(' ').toUpperCase();
+    
     // Módulos especiales
-    if (ticker === 'APV') {
-      const costVal = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) : 0;
-      let val = costVal;
-      if (!val || val === 0) {
-        for (let j = 0; j < row.length; j++) {
-          const num = parseFloat(row[j]);
-          if (num > 1000 && num < 10000000) {
-            val = num;
-            break;
-          }
-        }
+    if (rowText.includes('APV') && !rowText.includes('TRADING')) {
+      let val = 0;
+      for (let j = 0; j < row.length; j++) {
+        const num = parseFloat(row[j]);
+        if (num > 1000 && num < 10000000) { val = num; break; }
       }
       modulesData.apv = val || 0;
       console.log('🏦 APV encontrado:', modulesData.apv);
       continue;
     }
     
-    if (ticker === 'CRIPTO' || ticker === 'CRIPTO TRACKER') {
+    if (rowText.includes('CRIPTO') || rowText.includes('BTC') || rowText.includes('BITCOIN')) {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
-        if (num > 100 && num < 10000000) {
-          val = num;
-          break;
-        }
+        if (num > 100 && num < 10000000) { val = num; break; }
       }
       if (val > 0) {
         modulesData.rentaFija = val;
@@ -849,45 +802,35 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    if (ticker === 'RENTA FIJA' || ticker === 'RF') {
-      const costVal = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) : 0;
-      let val = costVal;
-      if (!val || val === 0) {
-        for (let j = 0; j < row.length; j++) {
-          const num = parseFloat(row[j]);
-          if (num > 1000 && num < 10000000) {
-            val = num;
-            break;
-          }
-        }
+    if (rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
+      let val = 0;
+      for (let j = 0; j < row.length; j++) {
+        const num = parseFloat(row[j]);
+        if (num > 1000 && num < 10000000) { val = num; break; }
       }
       modulesData.rentaFija = val || 0;
       console.log('🏛️ Renta Fija encontrada:', modulesData.rentaFija);
       continue;
     }
     
-    if (ticker === 'TRADING') {
-      const costVal = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) : 0;
-      let val = costVal;
-      if (!val || val === 0) {
-        for (let j = 0; j < row.length; j++) {
-          const num = parseFloat(row[j]);
-          if (num > 100 && num < 10000000) {
-            val = num;
-            break;
-          }
-        }
+    if (rowText.includes('TRADING')) {
+      let val = 0;
+      for (let j = 0; j < row.length; j++) {
+        const num = parseFloat(row[j]);
+        if (num > 100 && num < 10000000) { val = num; break; }
       }
       modulesData.trading = val || 0;
       console.log('⚡ Trading encontrado:', modulesData.trading);
       continue;
     }
     
+    // Saltar filas que no son acciones
     if (ticker === 'ACTIVO' || ticker === 'SIMBOLO' || ticker === '' || 
         ticker === 'TOTAL' || ticker === 'TOTAL CLP' || ticker === 'TOTAL USD') {
       continue;
     }
     
+    // Extraer acción
     const shares = (idx.shares >= 0 && idx.shares < row.length) ? parseFloat(row[idx.shares]) || 0 : 0;
     const price = (idx.price >= 0 && idx.price < row.length) ? parseFloat(row[idx.price]) || 0 : 0;
     const cost = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) || 0 : 0;
@@ -911,6 +854,7 @@ function parseExcelData(jsonData) {
       const avgCost = cost > 0 ? cost : price;
       
       stocks.push({
+        id: nextId++,
         ticker: ticker,
         name: ticker,
         shares: shares,
@@ -930,50 +874,6 @@ function parseExcelData(jsonData) {
   return { stocks, modules: modulesData };
 }
 
-function updatePortfolioFromSheet(parsed) {
-  if (!parsed || !parsed.stocks) return;
-  
-  const existingMap = {};
-  portfolio.forEach(p => existingMap[p.ticker] = p);
-  
-  const newPortfolio = [];
-  let maxId = Math.max(...portfolio.map(p => p.id), 0);
-  
-  parsed.stocks.forEach(stock => {
-    const existing = existingMap[stock.ticker];
-    if (existing) {
-      existing.shares = stock.shares;
-      existing.avgCost = stock.avgCost;
-      existing.annualDivPS = stock.annualDivPS;
-      existing.sector = stock.sector;
-      existing.roe = stock.roe;
-      newPortfolio.push(existing);
-    } else {
-      stock.id = ++maxId;
-      newPortfolio.push(stock);
-    }
-  });
-  
-  portfolio = newPortfolio;
-  nextId = maxId + 1;
-}
-
-function updateModulesFromSheet(parsed) {
-  if (!parsed || !parsed.modules) return;
-  
-  if (parsed.modules.apv > 0) {
-    modules.apv.valor = parsed.modules.apv;
-    modules.apv.costo = parsed.modules.apv;
-  }
-  if (parsed.modules.trading > 0) {
-    modules.trd.valor = parsed.modules.trading;
-    modules.trd.costo = parsed.modules.trading;
-  }
-  if (parsed.modules.rentaFija > 0) {
-    window.rentaFijaValor = parsed.modules.rentaFija;
-  }
-}
-
 // ── FUNCIONES DE COLORES ──────────────────────────────────────────────────
 function applyColors() {
   const colors = {
@@ -988,7 +888,6 @@ function applyColors() {
     green: document.getElementById('color-green').value,
     red: document.getElementById('color-red').value,
   };
-  
   const root = document.documentElement;
   Object.keys(colors).forEach(key => root.style.setProperty(`--${key}`, colors[key]));
   localStorage.setItem('kinesicfx_colors', JSON.stringify(colors));
@@ -1005,7 +904,7 @@ function loadColors() {
       });
       applyColors();
     }
-  } catch (e) {}
+  } catch(e) {}
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────
@@ -1040,7 +939,7 @@ function importData(event) {
       saveData();
       render();
       alert('✅ Datos importados correctamente');
-    } catch (err) {
+    } catch(err) {
       alert('❌ Error: ' + err.message);
     }
   };
@@ -1334,8 +1233,8 @@ function sortBy(k) {
 
 function setTab(t) {
   activeTab = t;
-  ['table', 'charts', 'dividends', 'trading', 'budget'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none');
-  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['table', 'charts', 'dividends', 'trading', 'budget'][i] === t));
+  ['table','charts','dividends','trading','budget'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none');
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['table','charts','dividends','trading','budget'][i] === t));
   render();
 }
 
@@ -1357,7 +1256,7 @@ function toggleEdit() {
   if (editOpen) renderEditTable();
 }
 
-// ── FUNCIONES DE DIVIDENDOS ──────────────────────────────────────────────
+// ── DIVIDENDOS ──────────────────────────────────────────────────────────────
 function renderDividends() {
   const td = rows.reduce((s, r) => s + r.annualDiv, 0);
   const tm = rows.reduce((s, r) => s + r.marketValue, 0);
@@ -1376,13 +1275,13 @@ function renderDividends() {
     <div class="alloc-bar"><div class="alloc-fill" style="width:${td > 0 ? (r.annualDiv / td * 100) : 0}%;background:var(--amber)"></div></div></div>`).join('') +
     (rows.filter(r => !r.annualDiv).length ? `<div style="font-size:10px;color:var(--muted);margin-top:8px">Sin dividendos: ${rows.filter(r => !r.annualDiv).map(r => r.ticker).join(', ')}</div>` : '');
   
-  document.getElementById('div-quarters').innerHTML = ['Q1 (Ene–Mar)', 'Q2 (Abr–Jun)', 'Q3 (Jul–Sep)', 'Q4 (Oct–Dic)'].map(q => `
+  document.getElementById('div-quarters').innerHTML = ['Q1 (Ene–Mar)','Q2 (Abr–Jun)','Q3 (Jul–Sep)','Q4 (Oct–Dic)'].map(q => `
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px">
     <span class="sub">${q}</span><span class="amber bold">${fmtM(td / 4)}</span></div>`).join('') +
     `<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:800"><span>TOTAL ANUAL</span><span class="amber">${fmtM(td)}</span></div>`;
 }
 
-// ── FUNCIONES DE TRADING ──────────────────────────────────────────────────
+// ── TRADING ──────────────────────────────────────────────────────────────────
 function addTrdEntry() {
   const fecha = document.getElementById('trd-fecha').value;
   const capital = parseFloat(document.getElementById('trd-capital').value);
@@ -1438,8 +1337,8 @@ function renderTrading() {
 
   let bestDelta = -Infinity, worstDelta = Infinity, bestLbl = '—', worstLbl = '—', bestVal = '—', worstVal = '—';
   for (let i = 1; i < hist.length; i++) {
-    const delta = hist[i].capital - hist[i - 1].capital;
-    const deltaPct = hist[i - 1].capital > 0 ? (delta / hist[i - 1].capital) * 100 : 0;
+    const delta = hist[i].capital - hist[i-1].capital;
+    const deltaPct = hist[i-1].capital > 0 ? (delta / hist[i-1].capital) * 100 : 0;
     if (delta > bestDelta) { bestDelta = delta; bestLbl = hist[i].fecha; bestVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
     if (delta < worstDelta) { worstDelta = delta; worstLbl = hist[i].fecha; worstVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
   }
@@ -1452,7 +1351,7 @@ function renderTrading() {
     ? '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Sin registros aún</div>'
     : [...hist].reverse().map((h, ri) => {
       const realI = hist.length - 1 - ri;
-      const prev = realI > 0 ? hist[realI - 1].capital : null;
+      const prev = realI > 0 ? hist[realI-1].capital : null;
       const delta = prev != null ? h.capital - prev : null;
       const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)22;font-size:11px">
@@ -1465,7 +1364,7 @@ function renderTrading() {
   document.getElementById('trd-table-body').innerHTML = hist.length === 0
     ? `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">Agrega registros para ver el detalle</td></tr>`
     : hist.map((h, i) => {
-      const prev = i > 0 ? hist[i - 1].capital : null;
+      const prev = i > 0 ? hist[i-1].capital : null;
       const delta = prev != null ? h.capital - prev : null;
       const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
       return `<tr style="${i % 2 === 0 ? '' : 'background:#0F162388'}">
@@ -1481,19 +1380,16 @@ function renderTrading() {
 
   const dateInput = document.getElementById('trd-fecha');
   if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
-  
   drawTradingChart(hist, inicial);
 }
 
 function drawTradingChart(hist, inicial) {
   const canvas = document.getElementById('trd-chart');
   if (!canvas) return;
-  
   const ctx = canvas.getContext('2d');
   const container = canvas.parentElement;
   const W = container.clientWidth || 500;
   const H = 300;
-  
   canvas.width = W;
   canvas.height = H;
   ctx.clearRect(0, 0, W, H);
@@ -1502,16 +1398,14 @@ function drawTradingChart(hist, inicial) {
     ctx.fillStyle = '#475569';
     ctx.font = '13px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Agrega registros para ver el gráfico', W / 2, H / 2);
+    ctx.fillText('Agrega registros para ver el gráfico', W/2, H/2);
     return;
   }
 
   let dataPoints = [];
-  if (inicial > 0) {
-    dataPoints.push({ fecha: 'Inicio', capital: inicial });
-  }
+  if (inicial > 0) dataPoints.push({ fecha: 'Inicio', capital: inicial });
   hist.forEach(h => {
-    if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
+    if (dataPoints.length === 0 || dataPoints[dataPoints.length-1].fecha !== h.fecha) {
       dataPoints.push({ fecha: h.fecha, capital: h.capital });
     }
   });
@@ -1520,7 +1414,7 @@ function drawTradingChart(hist, inicial) {
     ctx.fillStyle = '#475569';
     ctx.font = '13px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W / 2, H / 2);
+    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W/2, H/2);
     return;
   }
 
@@ -1537,12 +1431,11 @@ function drawTradingChart(hist, inicial) {
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   for (let i = 0; i <= 5; i++) {
-    const y = PAD.top + chartH * (1 - i / 5);
+    const y = PAD.top + chartH * (1 - i/5);
     ctx.beginPath();
     ctx.moveTo(PAD.left, y);
     ctx.lineTo(PAD.left + chartW, y);
     ctx.stroke();
-    
     const val = minVal + (range * i / 5);
     ctx.fillStyle = '#475569';
     ctx.font = '9px Inter, sans-serif';
@@ -1564,16 +1457,14 @@ function drawTradingChart(hist, inicial) {
   ctx.beginPath();
   ctx.moveTo(points[0].x, PAD.top + chartH);
   points.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(points[points.length - 1].x, PAD.top + chartH);
+  ctx.lineTo(points[points.length-1].x, PAD.top + chartH);
   ctx.closePath();
   ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
   ctx.strokeStyle = '#F59E0B';
   ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
@@ -1582,25 +1473,19 @@ function drawTradingChart(hist, inicial) {
   points.forEach((p, i) => {
     const isLast = i === points.length - 1;
     const isFirst = i === 0;
-    
     ctx.beginPath();
     ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
     ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
     ctx.fill();
-    if (isLast) {
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+    if (isLast) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
     
-    if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
+    if (totalPts <= 10 || i % Math.ceil(totalPts/8) === 0 || isLast || isFirst) {
       ctx.fillStyle = '#64748B';
       ctx.font = '8px Inter, sans-serif';
       ctx.textAlign = 'center';
       const label = p.data.fecha === 'Inicio' ? 'Inicio' : p.data.fecha.slice(5);
       ctx.fillText(label, p.x, PAD.top + chartH + 14);
     }
-    
     if (isLast) {
       ctx.fillStyle = '#F1F5F9';
       ctx.font = 'bold 10px Inter, sans-serif';
@@ -1626,7 +1511,7 @@ function drawTradingChart(hist, inicial) {
   }
 }
 
-// ── FUNCIONES DE PRESUPUESTO ──────────────────────────────────────────────
+// ── PRESUPUESTO ──────────────────────────────────────────────────────────────
 function calcBudget() {
   const ingreso = parseInt(document.getElementById('bdg-ingreso-input')?.value) || 0;
   const split = parseInt(document.getElementById('bdg-split')?.value) || 60;
@@ -1647,7 +1532,7 @@ function calcBudget() {
   const libre = disponible - totalAhorros;
 
   const clp = n => '$ ' + Math.round(n).toLocaleString('es-CL');
-  const pct = (n, d) => d > 0 ? (n / d * 100).toFixed(1) + '%' : '—';
+  const pct = (n, d) => d > 0 ? (n/d*100).toFixed(1) + '%' : '—';
 
   document.getElementById('bdg-ingreso').textContent = clp(ingreso);
   document.getElementById('bdg-gastos').textContent = clp(totalGastos);
@@ -1660,7 +1545,7 @@ function calcBudget() {
   document.getElementById('bdg-total-ahorros-lbl').textContent = clp(totalAhorros);
   document.getElementById('bdg-acc-var').textContent = clp(accVar);
   document.getElementById('bdg-rf-var').textContent = clp(rfVar);
-  document.getElementById('bdg-split-lbl').textContent = `${split}% / ${100 - split}%`;
+  document.getElementById('bdg-split-lbl').textContent = `${split}% / ${100-split}%`;
 
   const libreCard = document.getElementById('bdg-libre-card');
   const libreMsg = document.getElementById('bdg-libre-msg');
@@ -1684,7 +1569,7 @@ function calcBudget() {
     libreMsg.textContent = 'Ingresa tu capital mensual para calcular';
     libreBar.style.background = 'var(--border)';
   }
-  const barPct = ingreso > 0 ? Math.min(100, libre / ingreso * 100) : 0;
+  const barPct = ingreso > 0 ? Math.min(100, libre/ingreso*100) : 0;
   libreBar.style.width = barPct + '%';
 }
 
@@ -1708,7 +1593,7 @@ function saveBudget() {
 
 function saveMonthSnapshot() {
   const ingreso = budget.ingreso;
-  const totalGastos = Object.values(budget.gastos).reduce((a, b) => a + b, 0);
+  const totalGastos = Object.values(budget.gastos).reduce((a,b) => a+b, 0);
   const disponible = ingreso - totalGastos;
   const split = budget.split;
   const excedente = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
@@ -1716,7 +1601,7 @@ function saveMonthSnapshot() {
   const libre = disponible - totalAhorros;
   const now = new Date();
   const mes = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-  budget.history.push({ mes, ingreso, gastos: { ...budget.gastos }, totalGastos, totalAhorros, libre });
+  budget.history.push({ mes, ingreso, gastos: {...budget.gastos}, totalGastos, totalAhorros, libre });
   saveData();
   renderBudgetHistory();
 }
@@ -1769,7 +1654,7 @@ function renderBudget() {
   renderBudgetHistory();
 }
 
-// ── FUNCIONES DE CHARTS ──────────────────────────────────────────────────
+// ── CHARTS ──────────────────────────────────────────────────────────────────
 function renderCharts() {
   const accVal = rows.reduce((s, r) => s + r.marketValue, 0);
   const grandTotal = accVal + modules.apv.valor + modules.rac.valor + modules.trd.valor;
@@ -1783,29 +1668,29 @@ function renderCharts() {
   drawDonut('donut-seg', segData, grandTotal);
   document.getElementById('legend-seg').innerHTML = segData.map(s => `
     <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
-    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(grandTotal > 0 ? s.value / grandTotal * 100 : 0, 1)}%</span>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(grandTotal > 0 ? s.value/grandTotal*100 : 0, 1)}%</span>
     <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
 
   const sMap = {};
   rows.forEach(r => sMap[r.sector] = (sMap[r.sector] || 0) + r.marketValue);
-  const sd = Object.entries(sMap).map(([l, v]) => ({ label: l, value: v, color: SECTOR_COLORS[l] || '#888' })).sort((a, b) => b.value - a.value);
+  const sd = Object.entries(sMap).map(([l, v]) => ({ label: l, value: v, color: SECTOR_COLORS[l] || '#888' })).sort((a,b) => b.value - a.value);
   drawDonut('donut-sector', sd, accVal || 1);
   document.getElementById('legend-sector').innerHTML = sd.map(s => `
     <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
-    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(accVal > 0 ? s.value / accVal * 100 : 0, 1)}%</span>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(accVal > 0 ? s.value/accVal*100 : 0, 1)}%</span>
     <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
 
-  document.getElementById('alloc-bars').innerHTML = [...rows].sort((a, b) => b.marketValue - a.marketValue).map(r => {
+  document.getElementById('alloc-bars').innerHTML = [...rows].sort((a,b) => b.marketValue - a.marketValue).map(r => {
     const sc = SECTOR_COLORS[r.sector] || '#888';
-    const alloc = grandTotal > 0 ? (r.marketValue / grandTotal) * 100 : 0;
+    const alloc = grandTotal > 0 ? (r.marketValue/grandTotal)*100 : 0;
     return `<div class="alloc-item"><div class="alloc-header"><span style="font-weight:700;color:${sc}">${r.ticker}</span><span class="sub">${fmt(alloc, 1)}% · ${fmtM(r.marketValue)}</span></div><div class="alloc-bar"><div class="alloc-fill" style="width:${alloc}%;background:${sc}"></div></div></div>`;
   }).join('');
 
   drawPnlChart(rows);
   
-  const bg = [...rows].sort((a, b) => b.gainPct - a.gainPct);
-  document.getElementById('top-gainers').innerHTML = bg.slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
-  document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+  const bg = [...rows].sort((a,b) => b.gainPct - a.gainPct);
+  document.getElementById('top-gainers').innerHTML = bg.slice(0,4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+  document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0,4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
 }
 
 function drawDonut(id, data, total) {
@@ -1813,14 +1698,14 @@ function drawDonut(id, data, total) {
   if (!c) return;
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, 160, 160);
-  const cx = 80, cy = 80, r = 60, inn = 38;
-  let angle = -Math.PI / 2;
+  const cx=80, cy=80, r=60, inn=38;
+  let angle = -Math.PI/2;
   data.forEach(d => {
-    const sl = (d.value / (total || 1)) * Math.PI * 2;
+    const sl = (d.value/(total||1)) * Math.PI * 2;
     ctx.beginPath();
-    ctx.moveTo(cx + inn * Math.cos(angle), cy + inn * Math.sin(angle));
-    ctx.arc(cx, cy, r, angle, angle + sl);
-    ctx.arc(cx, cy, inn, angle + sl, angle, true);
+    ctx.moveTo(cx+inn*Math.cos(angle), cy+inn*Math.sin(angle));
+    ctx.arc(cx, cy, r, angle, angle+sl);
+    ctx.arc(cx, cy, inn, angle+sl, angle, true);
     ctx.closePath();
     ctx.fillStyle = d.color;
     ctx.globalAlpha = 0.9;
@@ -1831,10 +1716,10 @@ function drawDonut(id, data, total) {
   ctx.fillStyle = '#F1F5F9';
   ctx.font = 'bold 9px Inter,sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('PORTAFOLIO', cx, cy - 4);
+  ctx.fillText('PORTAFOLIO', cx, cy-4);
   ctx.fillStyle = '#94A3B8';
   ctx.font = '8px Inter,sans-serif';
-  ctx.fillText('ASIGNACIÓN', cx, cy + 8);
+  ctx.fillText('ASIGNACIÓN', cx, cy+8);
 }
 
 function drawPnlChart(rows) {
@@ -1844,26 +1729,23 @@ function drawPnlChart(rows) {
   const w = c.parentElement.clientWidth || 600;
   c.width = w;
   ctx.clearRect(0, 0, w, c.height);
-  const sorted = [...rows].sort((a, b) => b.gainDollar - a.gainDollar);
+  const sorted = [...rows].sort((a,b) => b.gainDollar - a.gainDollar);
   const max = Math.max(...sorted.map(r => Math.abs(r.gainDollar)), 1);
   const bW = Math.max(18, Math.min(40, (w - sorted.length * 8) / sorted.length));
   const midY = 70;
   sorted.forEach((r, i) => {
-    const x = i * (bW + 8) + 10, bH = (Math.abs(r.gainDollar) / max) * 55, y = r.gainDollar >= 0 ? midY - bH : midY;
+    const x = i*(bW+8)+10, bH = (Math.abs(r.gainDollar)/max)*55, y = r.gainDollar >= 0 ? midY - bH : midY;
     ctx.fillStyle = r.gainDollar >= 0 ? '#10B981' : '#EF4444';
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(x, y, bW, bH, 3);
-    } else {
-      ctx.rect(x, y, bW, bH);
-    }
+    if (ctx.roundRect) ctx.roundRect(x, y, bW, bH, 3);
+    else ctx.rect(x, y, bW, bH);
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#64748B';
     ctx.font = '9px Inter,sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(r.ticker, x + bW / 2, 92);
+    ctx.fillText(r.ticker, x + bW/2, 92);
   });
   ctx.strokeStyle = '#1E2D45';
   ctx.lineWidth = 1;
@@ -1873,7 +1755,7 @@ function drawPnlChart(rows) {
   ctx.stroke();
 }
 
-// ── RENDER PRINCIPAL ──────────────────────────────────────────────────────
+// ── RENDER ──────────────────────────────────────────────────────────────────
 function render() {
   computeRows();
   renderKPI();
@@ -1885,7 +1767,7 @@ function render() {
   if (editOpen) renderEditTable();
 }
 
-// ── INICIO ────────────────────────────────────────────────────────────────
+// ── INICIO ──────────────────────────────────────────────────────────────────
 (async function init() {
   loadColors();
   setupDropZone();
