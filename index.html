@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>KinesicFX — Portfolio</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#080C18;
@@ -28,6 +27,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
 #header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
 .logo{display:flex;align-items:center;gap:12px}
 .logo-icon{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -41,12 +41,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .currency-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .curr-btn{padding:5px 14px;border:none;cursor:pointer;font-size:11px;font-weight:700;transition:all .15s;background:transparent;color:var(--muted)}
 .curr-btn.active{background:var(--accent);color:#fff}
+
 #main{max-width:1440px;margin:0 auto;padding:16px 18px}
+
 .kpi-grand{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:10px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
 .kpi-label{font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
 .kpi-value{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
 .kpi-sub{font-size:10px;color:var(--sub);margin-top:4px}
+
 .seg-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
 .seg-card{background:var(--card);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
 .seg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
@@ -58,13 +61,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .seg-val{font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .seg-meta{font-size:10px;color:var(--sub);margin-top:3px}
 .seg-gain{font-size:11px;font-weight:700;margin-top:2px}
+
 .tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:14px;align-items:center;flex-wrap:wrap}
 .tab{padding:8px 16px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:transparent;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s}
 .tab.active{background:var(--accent);color:#fff;border-bottom-color:var(--accent)}
 .btn-edit{margin-left:auto;padding:7px 14px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:var(--amber);transition:all .15s;white-space:nowrap}
 .btn-edit.open{background:#f59e0b22;border-color:var(--amber)}
-.btn-upload{background:var(--green);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
-.btn-upload:hover{opacity:.85}
+
 .settings-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .settings-field label{display:block;font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
@@ -78,6 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-sync:hover{opacity:.85}
 .btn-sync.amber{background:var(--amber);color:#000}
 .btn-sync.purple{background:var(--purple)}
+
 #edit-panel{display:none;margin-bottom:14px}
 .edit-section{background:var(--card);border-radius:12px;padding:16px;margin-bottom:10px}
 .edit-section.border-amber{border:1px solid #f59e0b55}
@@ -92,6 +96,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .edit-field input:focus,.edit-field select:focus{border-color:var(--accent)}
 .btn-add{padding:8px 0;width:100%;background:var(--accent);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 .btn-add:hover{opacity:.85}
+
 .pos-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
 .pos-table th{background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 .pos-table td{padding:6px 6px;border-bottom:1px solid #1E2D4533;vertical-align:middle}
@@ -103,6 +108,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-del-row:hover{background:#ef444433}
 .saved-flash{animation:flash .7s ease}
 @keyframes flash{0%{background:#10b98133}100%{background:transparent}}
+
 .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
 table.main-table{width:100%;border-collapse:collapse;font-size:12px}
 table.main-table th{padding:10px 11px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
@@ -116,6 +122,7 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
 .bar-bg{height:4px;background:var(--border);border-radius:2px;width:56px}
 .bar-fill{height:100%;border-radius:2px;transition:width .5s}
+
 .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
 .chart-title{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
@@ -127,6 +134,7 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .alloc-header{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
 .alloc-bar{height:6px;background:var(--border);border-radius:3px}
 .alloc-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
 .div-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 .div-summary{background:var(--card);border:1px solid #f59e0b44;border-radius:12px;padding:18px}
 .div-big{font-size:30px;font-weight:900;color:var(--amber);margin:6px 0 2px}
@@ -135,26 +143,21 @@ table.main-table tr:hover td{background:#2563eb14!important}
 .mini-label{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .mini-val{font-size:15px;font-weight:800;color:var(--amber);margin-top:2px}
 #bdg-libre-card{border-radius:12px;padding:16px}
+
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(max-width:600px){.kpi-value{font-size:15px}}
+
 canvas { display: block; width: 100%; height: auto; }
-.file-drop-zone{border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;margin-bottom:16px;transition:all .3s;cursor:pointer}
-.file-drop-zone:hover{border-color:var(--accent);background:var(--surface)}
-.file-drop-zone.dragover{border-color:var(--green);background:#10b98122}
-.file-drop-zone input{display:none}
-.file-drop-zone .icon{font-size:40px;margin-bottom:10px}
-.file-drop-zone .text{color:var(--sub);font-size:13px}
-.file-drop-zone .subtext{color:var(--muted);font-size:11px;margin-top:6px}
 </style>
 </head>
 <body>
 
 <div id="loading">
   <div class="spinner"></div>
-  <div style="color:var(--sub);font-size:13px">Cargando datos…</div>
+  <div style="color:var(--sub);font-size:13px">Cargando datos y precios en tiempo real…</div>
 </div>
 
 <div id="header">
@@ -170,10 +173,8 @@ canvas { display: block; width: 100%; height: auto; }
       <button class="curr-btn active" id="btn-usd" onclick="setCurrency('USD')">USD</button>
       <button class="curr-btn" id="btn-clp" onclick="setCurrency('CLP')">CLP</button>
     </div>
-    <button onclick="document.getElementById('file-input').click()" class="btn-upload">📤 Subir Portafolio</button>
-    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event)"/>
     <button onclick="toggleSettings()" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700">⚙️</button>
-    <button onclick="clearData()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:700">🗑</button>
+    <button onclick="clearData()" title="Borrar todos los datos guardados" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:700">🗑</button>
     <div style="text-align:right">
       <div style="font-size:9px;color:var(--muted)">ACTUALIZACIÓN</div>
       <div class="update-time" id="update-time">—</div>
@@ -182,12 +183,13 @@ canvas { display: block; width: 100%; height: auto; }
     <div class="live-label" id="live-label" style="color:var(--muted)">CARGANDO</div>
   </div>
 </div>
+
 <div id="settings-panel" style="display:none;max-width:1440px;margin:0 auto 16px auto;padding:0 18px">
   <div class="settings-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:.1em;text-transform:uppercase">⚙️ Configuración</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="document.getElementById('file-input').click()" class="btn-sync" style="width:auto">📤 Subir Portafolio</button>
+        <button onclick="syncFromGoogleSheets()" class="btn-sync" style="width:auto">🔄 Sincronizar</button>
         <button onclick="exportData()" class="btn-sync amber" style="width:auto">📤 Exportar</button>
         <button onclick="document.getElementById('import-file').click()" class="btn-sync purple" style="width:auto">📥 Importar</button>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
@@ -195,8 +197,14 @@ canvas { display: block; width: 100%; height: auto; }
       </div>
     </div>
     <div class="settings-grid">
-      <div class="settings-field"><label>📊 Estado</label><input type="text" id="sync-status" value="Carga manual de archivo" readonly style="color:var(--amber);font-weight:700"/><div style="font-size:9px;color:var(--muted);margin-top:4px">Sube tu archivo Excel</div></div>
-      <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end"><div style="font-size:9px;color:var(--muted);margin-top:4px">Última carga: <span id="last-sync" style="color:var(--sub)">Nunca</span></div></div>
+      <div class="settings-field">
+        <label>📊 Estado</label>
+        <input type="text" id="sync-status" value="Conectado a Google Sheets" readonly style="color:var(--green);font-weight:700"/>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">ID: 12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo</div>
+      </div>
+      <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Última sincronización: <span id="last-sync" style="color:var(--sub)">Nunca</span></div>
+      </div>
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">🎨 Personalizar Colores</div>
@@ -217,13 +225,6 @@ canvas { display: block; width: 100%; height: auto; }
 </div>
 
 <div id="main">
-  <div class="file-drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-    <div class="icon">📊</div>
-    <div class="text">Arrastra o haz clic para subir tu archivo de portafolio</div>
-    <div class="subtext">Formatos: .xlsx, .xls, .csv</div>
-    <div id="file-status" style="margin-top:12px;font-weight:700;color:var(--green)"></div>
-  </div>
-
   <div class="kpi-grand">
     <div class="kpi"><div class="kpi-label">Valor Total</div><div class="kpi-value" id="kpi-total" style="color:var(--glow)">—</div><div class="kpi-sub" id="kpi-total-clp"></div></div>
     <div class="kpi"><div class="kpi-label">Capital Invertido</div><div class="kpi-value" id="kpi-cost" style="color:var(--sub)">—</div><div class="kpi-sub" id="kpi-cost-clp"></div></div>
@@ -374,7 +375,10 @@ canvas { display: block; width: 100%; height: auto; }
           <button onclick="addTrdEntry()" style="width:100%;padding:9px;background:var(--amber);border:none;border-radius:7px;color:#000;font-size:12px;font-weight:800;cursor:pointer">+ Agregar</button>
           <div id="trd-entry-msg" style="font-size:11px;height:16px"></div>
         </div>
-        <div style="margin-top:16px"><div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Historial</div><div id="trd-history-list" style="max-height:220px;overflow-y:auto"></div></div>
+        <div style="margin-top:16px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Historial</div>
+          <div id="trd-history-list" style="max-height:220px;overflow-y:auto"></div>
+        </div>
       </div>
       <div class="chart-card" style="border-color:#f59e0b44">
         <div class="chart-title" style="color:var(--amber)">📈 Evolución del Capital</div>
@@ -455,26 +459,30 @@ canvas { display: block; width: 100%; height: auto; }
 </div>
 
 <script>
-// ── POLYFILL ──────────────────────────────────────────────────────────────
+// ── POLYFILL para roundRect (compatibilidad navegadores) ────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (r > w/2) r = w/2;
-    if (r > h/2) r = h/2;
-    this.moveTo(x+r, y);
-    this.lineTo(x+w-r, y);
-    this.quadraticCurveTo(x+w, y, x+w, y+r);
-    this.lineTo(x+w, y+h-r);
-    this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-    this.lineTo(x+r, y+h);
-    this.quadraticCurveTo(x, y+h, x, y+h-r);
-    this.lineTo(x, y+r);
-    this.quadraticCurveTo(x, y, x+r, y);
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
     return this;
   };
 }
 
-// ── CONSTANTES ────────────────────────────────────────────────────────────
-const STORE_KEY = 'kinesicfx_v1';
+// ── CONFIGURACIÓN GOOGLE SHEETS ──────────────────────────────────────────
+const GOOGLE_SHEET_ID = '12b8TqnJNVxQfH8_XMr2x3xakinSz7sJyewPhe_p3Qwo';
+const GOOGLE_API_KEY = 'AIzaSyBfCcPpWnpX1JbYa-UO-SseY1HXnnArSa8';
+const GOOGLE_SHEET_RANGE = 'STOCK TRACKER!A:V';
+
+// ── CONFIGURACIÓN FINNHUB ─────────────────────────────────────────────────
 const FINNHUB_KEY = 'd93e0ohr01qgqnuaatd0d93e0ohr01qgqnuaatdg';
 const FINNHUB = 'https://finnhub.io/api/v1';
 
@@ -489,6 +497,8 @@ let isLive = false;
 let rows = [];
 
 const SECTOR_COLORS = {Technology:'#3B82F6',Financials:'#8B5CF6',Healthcare:'#10B981',Energy:'#F59E0B',Telecom:'#06B6D4',Crypto:'#F97316',Consumer:'#EC4899',Industrials:'#6366F1','Real Estate':'#14B8A6'};
+
+// ── MODIFICACIÓN: Se agregó "Vacaciones" a la lista de gastos ────────────
 const GASTOS_LABELS = ['Arriendo','Bencina','CAE','Cuentas','Mercadería','Otros','Polla','Vacaciones'];
 const AHORROS_FIJOS = { BTC: 40000, APV: 70000, Trading: 20000 };
 const SALDO_MINIMO = 230000;
@@ -496,133 +506,93 @@ const TOTAL_FIJOS = Object.values(AHORROS_FIJOS).reduce((a,b)=>a+b,0);
 
 let budget = { ingreso: 0, gastos: Object.fromEntries(GASTOS_LABELS.map(g=>[g,0])), split: 60, history: [] };
 
-// ── PERSISTENCIA ──────────────────────────────────────────────────────────
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return false;
-    const d = JSON.parse(raw);
-    if (d.portfolio && d.portfolio.length > 0) portfolio = d.portfolio;
-    if (d.modules) modules = Object.assign(modules, d.modules);
-    if (d.trdHistory) trdHistory = d.trdHistory || [];
-    if (d.nextId) nextId = d.nextId || 1;
-    if (d.currency) currency = d.currency;
-    if (d.budget) {
-      budget.ingreso = d.budget.ingreso || 0;
-      budget.split = d.budget.split || 60;
-      budget.history = d.budget.history || [];
-      if (d.budget.gastos) Object.assign(budget.gastos, d.budget.gastos);
-    }
-    return true;
-  } catch(e) { return false; }
-}
+const STORE_KEY = 'kinesicfx_v1';
 
-function saveData() {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ portfolio, modules, trdHistory, nextId, currency, budget }));
-  } catch(e) { console.warn('No se pudo guardar', e); }
-}
-
-function clearData() {
-  if (!confirm('⚠ ¿Borrar TODOS los datos guardados?')) return;
-  localStorage.removeItem(STORE_KEY);
-  location.reload();
-}
-
-// ── PRECIOS CON FINNHUB ──────────────────────────────────────────────────
+// ── FUNCIONES DE PRECIOS EN TIEMPO REAL ──────────────────────────────────
 async function fetchFX() {
   try {
-    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=CLP');
     const d = await r.json();
     if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
-  } catch(e) {
+  } catch (e) {
     try {
       const r2 = await fetch(`${FINNHUB}/forex/rates?base=USD&token=${FINNHUB_KEY}`);
       const d2 = await r2.json();
       if (d2.quote?.CLP) fxUSDCLP = d2.quote.CLP;
-    } catch(e2) {
-      console.warn('No se pudo obtener FX, usando valor 920');
-    }
+    } catch (e2) {}
   }
 }
 
-async function fetchStockPrice(ticker) {
-  try {
-    const r = await fetch(`${FINNHUB}/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
-    const d = await r.json();
-    if (d.c && d.c > 0) {
-      return { price: d.c, prevClose: d.pc || d.c };
-    }
-    return null;
-  } catch(e) {
-    console.warn(`Finnhub falló para ${ticker}, usando costo promedio`);
-    return null;
-  }
-}
-
-async function fetchCryptoPrice(ticker) {
-  try {
-    const CRYPTO_IDS = {
-      BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
-      ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network',
-      LINK: 'chainlink', UNI: 'uniswap', XRP: 'ripple', DOGE: 'dogecoin', LTC: 'litecoin'
-    };
-    const id = CRYPTO_IDS[ticker] || ticker.toLowerCase();
-    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
-    const d = await r.json();
-    if (d[id]?.usd) {
-      return { price: d[id].usd, prevClose: d[id].usd };
-    }
-    return null;
-  } catch(e) {
+async function fetchStockPrices() {
+  const stocks = portfolio.filter(p => p.type === 'stock');
+  if (!stocks.length) return;
+  
+  await Promise.allSettled(stocks.map(async pos => {
     try {
-      const sym = `BINANCE:${ticker}USDT`;
-      const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
+      const r = await fetch(`${FINNHUB}/quote?symbol=${pos.ticker}&token=${FINNHUB_KEY}`);
       const d = await r.json();
       if (d.c && d.c > 0) {
-        return { price: d.c, prevClose: d.pc || d.c };
+        prevPrices[pos.ticker] = prices[pos.ticker] || d.pc || d.c;
+        prices[pos.ticker] = d.c;
       }
-    } catch(e2) {}
-    return null;
+    } catch (e) { console.warn(`Finnhub quote failed: ${pos.ticker}`, e); }
+  }));
+}
+
+async function fetchCryptoPrices() {
+  const cryptos = portfolio.filter(p => p.type === 'crypto');
+  if (!cryptos.length) return;
+  
+  const CRYPTO_IDS = {
+    BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
+    ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network',
+    LINK: 'chainlink', UNI: 'uniswap', XRP: 'ripple', DOGE: 'dogecoin', LTC: 'litecoin'
+  };
+  
+  try {
+    const ids = cryptos.map(p => CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase()).join(',');
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+    const d = await r.json();
+    cryptos.forEach(p => {
+      const id = CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase();
+      if (d[id]?.usd) {
+        prevPrices[p.ticker] = prices[p.ticker] || d[id].usd;
+        prices[p.ticker] = d[id].usd;
+      }
+    });
+  } catch (e) {
+    await Promise.allSettled(cryptos.map(async p => {
+      try {
+        const sym = `BINANCE:${p.ticker}USDT`;
+        const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
+        const d = await r.json();
+        if (d.c && d.c > 0) {
+          prevPrices[p.ticker] = prices[p.ticker] || d.pc || d.c;
+          prices[p.ticker] = d.c;
+        }
+      } catch (e2) {}
+    }));
   }
 }
 
 async function fetchAllPrices() {
   const dot = document.getElementById('live-dot');
   const lbl = document.getElementById('live-label');
+  
   dot.style.background = 'var(--amber)';
   dot.style.boxShadow = '0 0 8px var(--amber)';
   lbl.style.color = 'var(--amber)';
   lbl.textContent = 'ACTUALIZANDO';
   
   try {
-    await fetchFX();
-    
-    const stocks = portfolio.filter(p => p.type === 'stock');
-    for (const pos of stocks) {
-      const result = await fetchStockPrice(pos.ticker);
-      if (result && result.price > 0) {
-        prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
-        prices[pos.ticker] = result.price || result.prevClose;
-      }
-    }
-    
-    const cryptos = portfolio.filter(p => p.type === 'crypto');
-    for (const pos of cryptos) {
-      const result = await fetchCryptoPrice(pos.ticker);
-      if (result && result.price > 0) {
-        prevPrices[pos.ticker] = prices[pos.ticker] || result.prevClose || result.price;
-        prices[pos.ticker] = result.price || result.prevClose;
-      }
-    }
-    
+    await Promise.all([fetchFX(), fetchStockPrices(), fetchCryptoPrices()]);
     updatePriceHistory();
     dot.style.background = 'var(--green)';
     dot.style.boxShadow = '0 0 8px var(--green)';
     lbl.style.color = 'var(--green)';
     lbl.textContent = 'LIVE';
     isLive = true;
-  } catch(e) {
+  } catch (e) {
     dot.style.background = 'var(--red)';
     dot.style.boxShadow = 'none';
     lbl.style.color = 'var(--red)';
@@ -642,312 +612,185 @@ function updatePriceHistory() {
   });
 }
 
-// ── CARGA DE ARCHIVO ──────────────────────────────────────────────────────
-function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  processFile(file);
-  event.target.value = '';
-}
+// ── FUNCIONES DE GOOGLE SHEETS ────────────────────────────────────────────
+async function syncFromGoogleSheets() {
+  const statusEl = document.getElementById('last-sync');
+  statusEl.textContent = '⏳ Sincronizando datos...';
+  statusEl.style.color = 'var(--amber)';
 
-function setupDropZone() {
-  const zone = document.getElementById('drop-zone');
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-  zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  });
-}
-
-function processFile(file) {
-  const status = document.getElementById('file-status');
-  status.textContent = '⏳ Procesando archivo...';
-  status.style.color = 'var(--amber)';
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      
-      let sheetName = 'STOCK TRACKER';
-      if (!workbook.SheetNames.includes(sheetName)) {
-        sheetName = workbook.SheetNames[0];
-      }
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1 });
-      
-      console.log('📊 Datos de la hoja:', jsonData);
-      
-      const parsed = parseExcelData(jsonData);
-      
-      if (parsed) {
-        portfolio = parsed.stocks;
-        
-        if (parsed.modules.apv > 0) {
-          modules.apv.valor = parsed.modules.apv;
-          modules.apv.costo = parsed.modules.apv;
-        }
-        if (parsed.modules.trading > 0) {
-          modules.trd.valor = parsed.modules.trading;
-          modules.trd.costo = parsed.modules.trading;
-        }
-        if (parsed.modules.rentaFija > 0) {
-          modules.rac.valor = parsed.modules.rentaFija;
-          modules.rac.costo = parsed.modules.rentaFija;
-          window.rentaFijaValor = parsed.modules.rentaFija;
-        }
-        
-        const msg = `✅ Archivo cargado: ${file.name} (${parsed.stocks.length} posiciones, APV: ${parsed.modules.apv}, Renta Fija: ${parsed.modules.rentaFija}, Trading: ${parsed.modules.trading})`;
-        status.textContent = msg;
-        status.style.color = 'var(--green)';
-        document.getElementById('last-sync').textContent = new Date().toLocaleString();
-        document.getElementById('last-sync').style.color = 'var(--green)';
-        
-        saveData();
-        fetchAllPrices().then(() => render());
-      } else {
-        console.error('❌ No se encontraron datos válidos.');
-        status.textContent = '❌ No se encontraron datos válidos en el archivo';
-        status.style.color = 'var(--red)';
-      }
-    } catch(err) {
-      console.error('Error procesando archivo:', err);
-      status.textContent = '❌ Error al procesar el archivo: ' + err.message;
-      status.style.color = 'var(--red)';
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${GOOGLE_SHEET_RANGE}?key=${GOOGLE_API_KEY}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Error al acceder a la hoja');
     }
-  };
-  reader.readAsArrayBuffer(file);
+    
+    const data = await response.json();
+    const parsed = parseGoogleSheetsData(data.values);
+    
+    if (parsed && parsed.stocks.length > 0) {
+      updatePortfolioFromSheet(parsed);
+      updateModulesFromSheet(parsed);
+      
+      statusEl.textContent = `✅ Sincronizado: ${new Date().toLocaleTimeString()}`;
+      statusEl.style.color = 'var(--green)';
+      
+      saveData();
+      await fetchAllPrices();
+      render();
+    } else {
+      throw new Error('No se encontraron datos en la hoja');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    statusEl.textContent = '❌ Error: ' + error.message;
+    statusEl.style.color = 'var(--red)';
+  }
 }
 
-function parseExcelData(jsonData) {
-  if (!jsonData || jsonData.length === 0) return { stocks: [], modules: { apv: 0, rentaFija: 0, trading: 0 } };
+function parseGoogleSheetsData(values) {
+  if (!values || values.length < 3) return null;
   
+  const headers = values[1] || [];
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
-  let btcData = null;
   
-  // Buscar encabezados - exactamente como en tu Excel
-  let headerRow = null;
-  let headerIndex = -1;
-  
-  for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-    const row = jsonData[i];
-    if (!row) continue;
-    // Buscar la fila que contiene "Simbolo" y "Acciones"
-    const hasTicker = row.some(cell => 
-      cell && (String(cell).toLowerCase().includes('simbolo') || 
-               String(cell).toLowerCase().includes('símbolo'))
-    );
-    const hasShares = row.some(cell => 
-      cell && String(cell).toLowerCase().includes('acciones')
-    );
-    if (hasTicker && hasShares) {
-      headerRow = row;
-      headerIndex = i;
-      console.log('✅ Encabezados encontrados en fila', i, ':', headerRow);
-      break;
-    }
-  }
-  
-  if (!headerRow) {
-    headerRow = jsonData[1] || [];
-    headerIndex = 1;
-  }
-  
-  // Mapeo exacto de columnas según tu Excel
   const idx = {
-    ticker: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'simbolo'),
-    shares: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'acciones'),
-    price: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'precio'),
-    marketPrice: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'precio mercado'),
-    cost: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'costo'),
-    marketValue: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'valor mercado'),
-    gain: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'ganancia en usd'),
-    growth: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'crecimiento'),
-    growthType: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'tipo crec'),
-    dividend: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'dividendos'),
-    divYield: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'rendimiento actual div'),
-    divCostYield: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'rendimiento div al costo'),
-    incomeDiv: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'ingreso por div'),
-    sector: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'sector'),
-    roe: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'roe'),
-    ret3a: headerRow.findIndex(cell => cell && String(cell).toLowerCase().trim() === 'retorno 3a')
+    ticker: headers.indexOf('Simbolo'),
+    shares: headers.indexOf('Acciones'),
+    price: headers.indexOf('Precio'),
+    cost: headers.indexOf('Costo'),
+    sector: headers.indexOf('Sector'),
+    dividend: headers.indexOf('Dividendos'),
+    roe: headers.indexOf('ROE'),
+    gain: headers.indexOf('Ganancia en USD'),
+    growth: headers.indexOf('Crecimiento'),
+    growthType: headers.indexOf('Tipo Crec')
   };
-  
-  console.log('📌 Índices encontrados:', idx);
-  
-  // Recorrer todas las filas
-  for (let i = 0; i < jsonData.length; i++) {
-    const row = jsonData[i];
+
+  for (let i = 2; i < values.length; i++) {
+    const row = values[i];
     if (!row || row.length < 2) continue;
     
-    const hasData = row.some(cell => cell && String(cell).trim() !== '');
-    if (!hasData) continue;
-    
-    const rowText = row.map(c => String(c || '').toUpperCase()).join(' ');
-    const firstCell = row[0] ? String(row[0]).trim().toUpperCase() : '';
-    
-    // ── DETECCIÓN DE MÓDULOS ──
-    // APV
-    if (firstCell === 'APV' || rowText.includes('APV')) {
-      let val = 0;
-      for (let j = 0; j < row.length; j++) {
-        const num = parseFloat(row[j]);
-        if (num > 1000 && num < 10000000) { val = num; break; }
-      }
-      if (val > 0) modulesData.apv = val;
-      console.log('🏦 APV:', modulesData.apv);
-      continue;
-    }
-    
-    // CRIPTO
-    if (firstCell === 'CRIPTO' || rowText.includes('CRIPTO') || rowText.includes('BITCOIN')) {
-      let val = 0;
-      for (let j = 0; j < row.length; j++) {
-        const num = parseFloat(row[j]);
-        if (num > 100 && num < 10000000) { val = num; break; }
-      }
-      if (val > 0) modulesData.rentaFija = val;
-      console.log('₿ Cripto:', val);
-      continue;
-    }
-    
-    // RENTA FIJA
-    if (firstCell === 'RENTA FIJA' || rowText.includes('RENTA FIJA') || rowText.includes('RF')) {
-      let val = 0;
-      for (let j = 0; j < row.length; j++) {
-        const num = parseFloat(row[j]);
-        if (num > 1000 && num < 10000000) { val = num; break; }
-      }
-      if (val > 0) modulesData.rentaFija = val;
-      console.log('🏛️ Renta Fija:', modulesData.rentaFija);
-      continue;
-    }
-    
-    // TRADING
-    if (firstCell === 'TRADING' || rowText.includes('TRADING')) {
-      let val = 0;
-      for (let j = 0; j < row.length; j++) {
-        const num = parseFloat(row[j]);
-        if (num > 100 && num < 10000000) { val = num; break; }
-      }
-      if (val > 0) modulesData.trading = val;
-      console.log('⚡ Trading:', modulesData.trading);
-      continue;
-    }
-    
-    // ── BUSCAR BTC EN LA SECCIÓN CRIPTO TRACKER ──
-    // Buscar la fila que contiene "Mes" y luego extraer BTC
-    if (firstCell === 'MES' || rowText.includes('MES') || rowText.includes('MONTO $')) {
-      // Buscar la siguiente fila que tenga datos de BTC
-      for (let j = i + 1; j < Math.min(i + 5, jsonData.length); j++) {
-        const btcRow = jsonData[j];
-        if (!btcRow || btcRow.length < 5) continue;
-        // Verificar si tiene datos de BTC (columna S = Monto $, T = Monto USD, U = Cantidad BTC, V = Precio)
-        const montoCLP = parseFloat(btcRow[18]) || 0; // Columna S
-        const montoUSD = parseFloat(btcRow[19]) || 0; // Columna T
-        const cantidadBTC = parseFloat(btcRow[20]) || 0; // Columna U
-        const precioBTC = parseFloat(btcRow[21]) || 0; // Columna V
-        const dcaBTC = parseFloat(btcRow[22]) || 0; // Columna W
-        
-        if (cantidadBTC > 0 && precioBTC > 0) {
-          btcData = {
-            cantidad: cantidadBTC,
-            precio: precioBTC,
-            dca: dcaBTC,
-            montoCLP: montoCLP,
-            montoUSD: montoUSD
-          };
-          console.log('₿ BTC encontrado:', btcData);
-          break;
-        }
-      }
-      continue;
-    }
-    
-    // ── SALTAR FILAS QUE NO SON ACCIONES ──
-    if (firstCell === 'ACTIVO' || firstCell === 'SIMBOLO' || firstCell === '' || 
-        firstCell === 'TOTAL' || firstCell === 'TOTAL CLP' || firstCell === 'TOTAL USD' ||
-        firstCell === 'MES' || firstCell === 'MONTO' || firstCell === 'FECHA' ||
-        firstCell === '=' || firstCell === 'CRIPTO TRACKER' || firstCell === 'KINESIC FX') {
-      continue;
-    }
-    
-    // ── EXTRAER ACCIÓN ──
-    const ticker = (idx.ticker >= 0 && idx.ticker < row.length) ? String(row[idx.ticker] || '').trim().toUpperCase() : '';
+    const ticker = row[idx.ticker]?.trim();
     if (!ticker) continue;
     
-    const shares = (idx.shares >= 0 && idx.shares < row.length) ? parseFloat(row[idx.shares]) || 0 : 0;
-    const price = (idx.price >= 0 && idx.price < row.length) ? parseFloat(row[idx.price]) || 0 : 0;
-    const cost = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) || 0 : 0;
-    const dividend = (idx.dividend >= 0 && idx.dividend < row.length) ? parseFloat(row[idx.dividend]) || 0 : 0;
-    const sector = (idx.sector >= 0 && idx.sector < row.length) ? String(row[idx.sector] || '').trim() : 'Unknown';
-    const roe = (idx.roe >= 0 && idx.roe < row.length) ? parseFloat(row[idx.roe]) || null : null;
-    const growth = (idx.growth >= 0 && idx.growth < row.length) ? parseFloat(row[idx.growth]) || null : null;
-    const growthType = (idx.growthType >= 0 && idx.growthType < row.length) ? String(row[idx.growthType] || '').trim() : '';
+    if (ticker === 'APV') { 
+      modulesData.apv = parseFloat(row[idx.cost]) || 0; 
+      continue; 
+    }
+    if (ticker === 'Renta Fija') { 
+      modulesData.rentaFija = parseFloat(row[idx.cost]) || 0; 
+      continue; 
+    }
+    if (ticker === 'Trading') { 
+      modulesData.trading = parseFloat(row[idx.cost]) || 0; 
+      continue; 
+    }
+    if (ticker === 'Activo' || ticker === 'Cripto' || ticker === '' || ticker === 'Simbolo') continue;
     
-    if (shares > 0 && (price > 0 || cost > 0)) {
-      // Mapear sector
-      let mappedSector = sector;
-      const s = sector.toLowerCase();
-      if (s.includes('tech')) mappedSector = 'Technology';
-      else if (s.includes('financ')) mappedSector = 'Financials';
-      else if (s.includes('health')) mappedSector = 'Healthcare';
-      else if (s.includes('energy')) mappedSector = 'Energy';
-      else if (s.includes('telecom')) mappedSector = 'Telecom';
-      else if (s.includes('crypto')) mappedSector = 'Crypto';
-      else if (s.includes('consumer')) mappedSector = 'Consumer';
-      else if (s.includes('industrial')) mappedSector = 'Industrials';
-      else if (s.includes('real estate')) mappedSector = 'Real Estate';
-      else if (s.includes('materials')) mappedSector = 'Materials';
-      else if (s.includes('staples')) mappedSector = 'Consumer';
-      
-      const avgCost = cost > 0 ? cost : price;
-      
+    const shares = parseFloat(row[idx.shares]) || 0;
+    const avgCost = parseFloat(row[idx.cost]) || 0;
+    if (shares > 0 && avgCost > 0) {
       stocks.push({
-        id: nextId++,
         ticker: ticker,
         name: ticker,
         shares: shares,
         avgCost: avgCost,
-        annualDivPS: dividend,
+        annualDivPS: parseFloat(row[idx.dividend]) || 0,
         type: 'stock',
-        sector: mappedSector,
-        roe: roe,
-        growth: growth,
-        growthType: growthType
+        sector: row[idx.sector]?.trim() || 'Unknown',
+        roe: parseFloat(row[idx.roe]) || null,
+        growthType: row[idx.growthType]?.trim() || ''
       });
-      console.log('📈 Acción:', ticker, shares, avgCost, 'Sector:', mappedSector);
+    }
+  }
+
+  let btcData = null;
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    if (row && row.length > 16 && row[16]?.trim() === 'Mes') {
+      const btcRow = values[i + 1];
+      if (btcRow && btcRow.length > 21) {
+        btcData = {
+          fecha: btcRow[16]?.trim() || '',
+          montoCLP: parseFloat(btcRow[18]) || 0,
+          montoUSD: parseFloat(btcRow[19]) || 0,
+          cantidad: parseFloat(btcRow[20]) || 0,
+          precio: parseFloat(btcRow[21]) || 0,
+          dca: parseFloat(btcRow[22]) || 0
+        };
+      }
+      break;
+    }
+  }
+
+  return { stocks, modules: modulesData, btc: btcData };
+}
+
+function updatePortfolioFromSheet(parsed) {
+  if (!parsed || !parsed.stocks) return;
+  
+  const existingMap = {};
+  portfolio.forEach(p => existingMap[p.ticker] = p);
+  
+  const newPortfolio = [];
+  let maxId = Math.max(...portfolio.map(p => p.id), 0);
+  
+  parsed.stocks.forEach(stock => {
+    const existing = existingMap[stock.ticker];
+    if (existing) {
+      existing.shares = stock.shares;
+      existing.avgCost = stock.avgCost;
+      existing.annualDivPS = stock.annualDivPS;
+      existing.sector = stock.sector;
+      existing.roe = stock.roe;
+      newPortfolio.push(existing);
+    } else {
+      stock.id = ++maxId;
+      newPortfolio.push(stock);
+    }
+  });
+  
+  if (parsed.btc && parsed.btc.cantidad > 0) {
+    let btc = newPortfolio.find(p => p.ticker === 'BTC');
+    if (btc) {
+      btc.shares = parsed.btc.cantidad || 0;
+      btc.avgCost = parsed.btc.dca || parsed.btc.precio || 0;
+    } else {
+      newPortfolio.push({
+        id: ++maxId,
+        ticker: 'BTC',
+        name: 'Bitcoin',
+        shares: parsed.btc.cantidad || 0,
+        avgCost: parsed.btc.dca || parsed.btc.precio || 0,
+        annualDivPS: 0,
+        type: 'crypto',
+        sector: 'Crypto'
+      });
     }
   }
   
-  // ── AGREGAR BTC AL PORTFOLIO ──
-  if (btcData && btcData.cantidad > 0) {
-    const avgCost = btcData.dca > 0 ? btcData.dca : btcData.precio;
-    stocks.push({
-      id: nextId++,
-      ticker: 'BTC',
-      name: 'Bitcoin',
-      shares: btcData.cantidad,
-      avgCost: avgCost,
-      annualDivPS: 0,
-      type: 'crypto',
-      sector: 'Crypto',
-      roe: null,
-      growth: null,
-      growthType: ''
-    });
-    console.log('₿ BTC agregado al portafolio:', btcData.cantidad, 'a $' + avgCost);
+  portfolio = newPortfolio;
+  nextId = maxId + 1;
+}
+
+function updateModulesFromSheet(parsed) {
+  if (!parsed || !parsed.modules) return;
+  
+  if (parsed.modules.apv > 0) {
+    modules.apv.valor = parsed.modules.apv;
+    modules.apv.costo = parsed.modules.apv;
   }
-  
-  console.log(`✅ ${stocks.length} acciones procesadas (incluyendo BTC)`);
-  console.log('📦 Módulos:', modulesData);
-  
-  return { stocks, modules: modulesData };
+  if (parsed.modules.trading > 0) {
+    modules.trd.valor = parsed.modules.trading;
+    modules.trd.costo = parsed.modules.trading;
+  }
+  if (parsed.modules.rentaFija > 0) {
+    window.rentaFijaValor = parsed.modules.rentaFija;
+  }
 }
 
 // ── FUNCIONES DE COLORES ──────────────────────────────────────────────────
@@ -964,6 +807,7 @@ function applyColors() {
     green: document.getElementById('color-green').value,
     red: document.getElementById('color-red').value,
   };
+  
   const root = document.documentElement;
   Object.keys(colors).forEach(key => root.style.setProperty(`--${key}`, colors[key]));
   localStorage.setItem('kinesicfx_colors', JSON.stringify(colors));
@@ -980,7 +824,7 @@ function loadColors() {
       });
       applyColors();
     }
-  } catch(e) {}
+  } catch (e) {}
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────
@@ -1010,12 +854,12 @@ function importData(event) {
       const data = JSON.parse(e.target.result);
       if (data.portfolio) portfolio = data.portfolio;
       if (data.modules) modules = data.modules;
-      if (data.trdHistory) trdHistory = data.trdHistory || [];
+      if (data.trdHistory) trdHistory = data.trdHistory;
       if (data.budget) budget = data.budget;
       saveData();
       render();
       alert('✅ Datos importados correctamente');
-    } catch(err) {
+    } catch (err) {
       alert('❌ Error: ' + err.message);
     }
   };
@@ -1101,7 +945,8 @@ function renderKPI() {
     document.getElementById(pfx + '-gain').className = 'seg-gain ' + (m.valor > 0 ? cc(g) : 'sub');
   });
 }
-  function renderTable() {
+
+function renderTable() {
   const sorted = [...rows].sort((a, b) => {
     const av = typeof a[sortKey] === 'string' ? a[sortKey] : (a[sortKey] ?? -Infinity);
     const bv = typeof b[sortKey] === 'string' ? b[sortKey] : (b[sortKey] ?? -Infinity);
@@ -1308,8 +1153,8 @@ function sortBy(k) {
 
 function setTab(t) {
   activeTab = t;
-  ['table','charts','dividends','trading','budget'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none');
-  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['table','charts','dividends','trading','budget'][i] === t));
+  ['table', 'charts', 'dividends', 'trading', 'budget'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none');
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['table', 'charts', 'dividends', 'trading', 'budget'][i] === t));
   render();
 }
 
@@ -1331,7 +1176,7 @@ function toggleEdit() {
   if (editOpen) renderEditTable();
 }
 
-// ── DIVIDENDOS ──────────────────────────────────────────────────────────────
+// ── FUNCIONES DE DIVIDENDOS ──────────────────────────────────────────────
 function renderDividends() {
   const td = rows.reduce((s, r) => s + r.annualDiv, 0);
   const tm = rows.reduce((s, r) => s + r.marketValue, 0);
@@ -1350,13 +1195,13 @@ function renderDividends() {
     <div class="alloc-bar"><div class="alloc-fill" style="width:${td > 0 ? (r.annualDiv / td * 100) : 0}%;background:var(--amber)"></div></div></div>`).join('') +
     (rows.filter(r => !r.annualDiv).length ? `<div style="font-size:10px;color:var(--muted);margin-top:8px">Sin dividendos: ${rows.filter(r => !r.annualDiv).map(r => r.ticker).join(', ')}</div>` : '');
   
-  document.getElementById('div-quarters').innerHTML = ['Q1 (Ene–Mar)','Q2 (Abr–Jun)','Q3 (Jul–Sep)','Q4 (Oct–Dic)'].map(q => `
+  document.getElementById('div-quarters').innerHTML = ['Q1 (Ene–Mar)', 'Q2 (Abr–Jun)', 'Q3 (Jul–Sep)', 'Q4 (Oct–Dic)'].map(q => `
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px">
     <span class="sub">${q}</span><span class="amber bold">${fmtM(td / 4)}</span></div>`).join('') +
     `<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:800"><span>TOTAL ANUAL</span><span class="amber">${fmtM(td)}</span></div>`;
 }
 
-// ── TRADING ──────────────────────────────────────────────────────────────────
+// ── FUNCIONES DE TRADING ──────────────────────────────────────────────────
 function addTrdEntry() {
   const fecha = document.getElementById('trd-fecha').value;
   const capital = parseFloat(document.getElementById('trd-capital').value);
@@ -1412,8 +1257,8 @@ function renderTrading() {
 
   let bestDelta = -Infinity, worstDelta = Infinity, bestLbl = '—', worstLbl = '—', bestVal = '—', worstVal = '—';
   for (let i = 1; i < hist.length; i++) {
-    const delta = hist[i].capital - hist[i-1].capital;
-    const deltaPct = hist[i-1].capital > 0 ? (delta / hist[i-1].capital) * 100 : 0;
+    const delta = hist[i].capital - hist[i - 1].capital;
+    const deltaPct = hist[i - 1].capital > 0 ? (delta / hist[i - 1].capital) * 100 : 0;
     if (delta > bestDelta) { bestDelta = delta; bestLbl = hist[i].fecha; bestVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
     if (delta < worstDelta) { worstDelta = delta; worstLbl = hist[i].fecha; worstVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
   }
@@ -1426,7 +1271,7 @@ function renderTrading() {
     ? '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Sin registros aún</div>'
     : [...hist].reverse().map((h, ri) => {
       const realI = hist.length - 1 - ri;
-      const prev = realI > 0 ? hist[realI-1].capital : null;
+      const prev = realI > 0 ? hist[realI - 1].capital : null;
       const delta = prev != null ? h.capital - prev : null;
       const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)22;font-size:11px">
@@ -1439,7 +1284,7 @@ function renderTrading() {
   document.getElementById('trd-table-body').innerHTML = hist.length === 0
     ? `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">Agrega registros para ver el detalle</td></tr>`
     : hist.map((h, i) => {
-      const prev = i > 0 ? hist[i-1].capital : null;
+      const prev = i > 0 ? hist[i - 1].capital : null;
       const delta = prev != null ? h.capital - prev : null;
       const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
       return `<tr style="${i % 2 === 0 ? '' : 'background:#0F162388'}">
@@ -1455,16 +1300,19 @@ function renderTrading() {
 
   const dateInput = document.getElementById('trd-fecha');
   if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
+  
   drawTradingChart(hist, inicial);
 }
 
 function drawTradingChart(hist, inicial) {
   const canvas = document.getElementById('trd-chart');
   if (!canvas) return;
+  
   const ctx = canvas.getContext('2d');
   const container = canvas.parentElement;
   const W = container.clientWidth || 500;
   const H = 300;
+  
   canvas.width = W;
   canvas.height = H;
   ctx.clearRect(0, 0, W, H);
@@ -1473,14 +1321,16 @@ function drawTradingChart(hist, inicial) {
     ctx.fillStyle = '#475569';
     ctx.font = '13px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Agrega registros para ver el gráfico', W/2, H/2);
+    ctx.fillText('Agrega registros para ver el gráfico', W / 2, H / 2);
     return;
   }
 
   let dataPoints = [];
-  if (inicial > 0) dataPoints.push({ fecha: 'Inicio', capital: inicial });
+  if (inicial > 0) {
+    dataPoints.push({ fecha: 'Inicio', capital: inicial });
+  }
   hist.forEach(h => {
-    if (dataPoints.length === 0 || dataPoints[dataPoints.length-1].fecha !== h.fecha) {
+    if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
       dataPoints.push({ fecha: h.fecha, capital: h.capital });
     }
   });
@@ -1489,7 +1339,7 @@ function drawTradingChart(hist, inicial) {
     ctx.fillStyle = '#475569';
     ctx.font = '13px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W/2, H/2);
+    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W / 2, H / 2);
     return;
   }
 
@@ -1506,11 +1356,12 @@ function drawTradingChart(hist, inicial) {
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   for (let i = 0; i <= 5; i++) {
-    const y = PAD.top + chartH * (1 - i/5);
+    const y = PAD.top + chartH * (1 - i / 5);
     ctx.beginPath();
     ctx.moveTo(PAD.left, y);
     ctx.lineTo(PAD.left + chartW, y);
     ctx.stroke();
+    
     const val = minVal + (range * i / 5);
     ctx.fillStyle = '#475569';
     ctx.font = '9px Inter, sans-serif';
@@ -1532,14 +1383,16 @@ function drawTradingChart(hist, inicial) {
   ctx.beginPath();
   ctx.moveTo(points[0].x, PAD.top + chartH);
   points.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(points[points.length-1].x, PAD.top + chartH);
+  ctx.lineTo(points[points.length - 1].x, PAD.top + chartH);
   ctx.closePath();
   ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
   ctx.strokeStyle = '#F59E0B';
   ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
@@ -1548,19 +1401,25 @@ function drawTradingChart(hist, inicial) {
   points.forEach((p, i) => {
     const isLast = i === points.length - 1;
     const isFirst = i === 0;
+    
     ctx.beginPath();
     ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
     ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
     ctx.fill();
-    if (isLast) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (isLast) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
     
-    if (totalPts <= 10 || i % Math.ceil(totalPts/8) === 0 || isLast || isFirst) {
+    if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
       ctx.fillStyle = '#64748B';
       ctx.font = '8px Inter, sans-serif';
       ctx.textAlign = 'center';
       const label = p.data.fecha === 'Inicio' ? 'Inicio' : p.data.fecha.slice(5);
       ctx.fillText(label, p.x, PAD.top + chartH + 14);
     }
+    
     if (isLast) {
       ctx.fillStyle = '#F1F5F9';
       ctx.font = 'bold 10px Inter, sans-serif';
@@ -1585,7 +1444,8 @@ function drawTradingChart(hist, inicial) {
     ctx.fillText('Base', PAD.left + 4, baseY - 4);
   }
 }
-  // ── PRESUPUESTO ──────────────────────────────────────────────────────────────
+
+// ── FUNCIONES DE PRESUPUESTO ──────────────────────────────────────────────
 function calcBudget() {
   const ingreso = parseInt(document.getElementById('bdg-ingreso-input')?.value) || 0;
   const split = parseInt(document.getElementById('bdg-split')?.value) || 60;
@@ -1606,7 +1466,7 @@ function calcBudget() {
   const libre = disponible - totalAhorros;
 
   const clp = n => '$ ' + Math.round(n).toLocaleString('es-CL');
-  const pct = (n, d) => d > 0 ? (n/d*100).toFixed(1) + '%' : '—';
+  const pct = (n, d) => d > 0 ? (n / d * 100).toFixed(1) + '%' : '—';
 
   document.getElementById('bdg-ingreso').textContent = clp(ingreso);
   document.getElementById('bdg-gastos').textContent = clp(totalGastos);
@@ -1619,7 +1479,7 @@ function calcBudget() {
   document.getElementById('bdg-total-ahorros-lbl').textContent = clp(totalAhorros);
   document.getElementById('bdg-acc-var').textContent = clp(accVar);
   document.getElementById('bdg-rf-var').textContent = clp(rfVar);
-  document.getElementById('bdg-split-lbl').textContent = `${split}% / ${100-split}%`;
+  document.getElementById('bdg-split-lbl').textContent = `${split}% / ${100 - split}%`;
 
   const libreCard = document.getElementById('bdg-libre-card');
   const libreMsg = document.getElementById('bdg-libre-msg');
@@ -1643,7 +1503,7 @@ function calcBudget() {
     libreMsg.textContent = 'Ingresa tu capital mensual para calcular';
     libreBar.style.background = 'var(--border)';
   }
-  const barPct = ingreso > 0 ? Math.min(100, libre/ingreso*100) : 0;
+  const barPct = ingreso > 0 ? Math.min(100, libre / ingreso * 100) : 0;
   libreBar.style.width = barPct + '%';
 }
 
@@ -1667,7 +1527,7 @@ function saveBudget() {
 
 function saveMonthSnapshot() {
   const ingreso = budget.ingreso;
-  const totalGastos = Object.values(budget.gastos).reduce((a,b) => a+b, 0);
+  const totalGastos = Object.values(budget.gastos).reduce((a, b) => a + b, 0);
   const disponible = ingreso - totalGastos;
   const split = budget.split;
   const excedente = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
@@ -1675,7 +1535,7 @@ function saveMonthSnapshot() {
   const libre = disponible - totalAhorros;
   const now = new Date();
   const mes = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-  budget.history.push({ mes, ingreso, gastos: {...budget.gastos}, totalGastos, totalAhorros, libre });
+  budget.history.push({ mes, ingreso, gastos: { ...budget.gastos }, totalGastos, totalAhorros, libre });
   saveData();
   renderBudgetHistory();
 }
@@ -1728,7 +1588,7 @@ function renderBudget() {
   renderBudgetHistory();
 }
 
-// ── CHARTS ──────────────────────────────────────────────────────────────────
+// ── FUNCIONES DE CHARTS ──────────────────────────────────────────────────
 function renderCharts() {
   const accVal = rows.reduce((s, r) => s + r.marketValue, 0);
   const grandTotal = accVal + modules.apv.valor + modules.rac.valor + modules.trd.valor;
@@ -1742,29 +1602,29 @@ function renderCharts() {
   drawDonut('donut-seg', segData, grandTotal);
   document.getElementById('legend-seg').innerHTML = segData.map(s => `
     <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
-    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(grandTotal > 0 ? s.value/grandTotal*100 : 0, 1)}%</span>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(grandTotal > 0 ? s.value / grandTotal * 100 : 0, 1)}%</span>
     <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
 
   const sMap = {};
   rows.forEach(r => sMap[r.sector] = (sMap[r.sector] || 0) + r.marketValue);
-  const sd = Object.entries(sMap).map(([l, v]) => ({ label: l, value: v, color: SECTOR_COLORS[l] || '#888' })).sort((a,b) => b.value - a.value);
+  const sd = Object.entries(sMap).map(([l, v]) => ({ label: l, value: v, color: SECTOR_COLORS[l] || '#888' })).sort((a, b) => b.value - a.value);
   drawDonut('donut-sector', sd, accVal || 1);
   document.getElementById('legend-sector').innerHTML = sd.map(s => `
     <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
-    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(accVal > 0 ? s.value/accVal*100 : 0, 1)}%</span>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(accVal > 0 ? s.value / accVal * 100 : 0, 1)}%</span>
     <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
 
-  document.getElementById('alloc-bars').innerHTML = [...rows].sort((a,b) => b.marketValue - a.marketValue).map(r => {
+  document.getElementById('alloc-bars').innerHTML = [...rows].sort((a, b) => b.marketValue - a.marketValue).map(r => {
     const sc = SECTOR_COLORS[r.sector] || '#888';
-    const alloc = grandTotal > 0 ? (r.marketValue/grandTotal)*100 : 0;
+    const alloc = grandTotal > 0 ? (r.marketValue / grandTotal) * 100 : 0;
     return `<div class="alloc-item"><div class="alloc-header"><span style="font-weight:700;color:${sc}">${r.ticker}</span><span class="sub">${fmt(alloc, 1)}% · ${fmtM(r.marketValue)}</span></div><div class="alloc-bar"><div class="alloc-fill" style="width:${alloc}%;background:${sc}"></div></div></div>`;
   }).join('');
 
   drawPnlChart(rows);
   
-  const bg = [...rows].sort((a,b) => b.gainPct - a.gainPct);
-  document.getElementById('top-gainers').innerHTML = bg.slice(0,4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
-  document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0,4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+  const bg = [...rows].sort((a, b) => b.gainPct - a.gainPct);
+  document.getElementById('top-gainers').innerHTML = bg.slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+  document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
 }
 
 function drawDonut(id, data, total) {
@@ -1772,14 +1632,14 @@ function drawDonut(id, data, total) {
   if (!c) return;
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, 160, 160);
-  const cx=80, cy=80, r=60, inn=38;
-  let angle = -Math.PI/2;
+  const cx = 80, cy = 80, r = 60, inn = 38;
+  let angle = -Math.PI / 2;
   data.forEach(d => {
-    const sl = (d.value/(total||1)) * Math.PI * 2;
+    const sl = (d.value / (total || 1)) * Math.PI * 2;
     ctx.beginPath();
-    ctx.moveTo(cx+inn*Math.cos(angle), cy+inn*Math.sin(angle));
-    ctx.arc(cx, cy, r, angle, angle+sl);
-    ctx.arc(cx, cy, inn, angle+sl, angle, true);
+    ctx.moveTo(cx + inn * Math.cos(angle), cy + inn * Math.sin(angle));
+    ctx.arc(cx, cy, r, angle, angle + sl);
+    ctx.arc(cx, cy, inn, angle + sl, angle, true);
     ctx.closePath();
     ctx.fillStyle = d.color;
     ctx.globalAlpha = 0.9;
@@ -1790,10 +1650,10 @@ function drawDonut(id, data, total) {
   ctx.fillStyle = '#F1F5F9';
   ctx.font = 'bold 9px Inter,sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('PORTAFOLIO', cx, cy-4);
+  ctx.fillText('PORTAFOLIO', cx, cy - 4);
   ctx.fillStyle = '#94A3B8';
   ctx.font = '8px Inter,sans-serif';
-  ctx.fillText('ASIGNACIÓN', cx, cy+8);
+  ctx.fillText('ASIGNACIÓN', cx, cy + 8);
 }
 
 function drawPnlChart(rows) {
@@ -1803,23 +1663,22 @@ function drawPnlChart(rows) {
   const w = c.parentElement.clientWidth || 600;
   c.width = w;
   ctx.clearRect(0, 0, w, c.height);
-  const sorted = [...rows].sort((a,b) => b.gainDollar - a.gainDollar);
+  const sorted = [...rows].sort((a, b) => b.gainDollar - a.gainDollar);
   const max = Math.max(...sorted.map(r => Math.abs(r.gainDollar)), 1);
   const bW = Math.max(18, Math.min(40, (w - sorted.length * 8) / sorted.length));
   const midY = 70;
   sorted.forEach((r, i) => {
-    const x = i*(bW+8)+10, bH = (Math.abs(r.gainDollar)/max)*55, y = r.gainDollar >= 0 ? midY - bH : midY;
+    const x = i * (bW + 8) + 10, bH = (Math.abs(r.gainDollar) / max) * 55, y = r.gainDollar >= 0 ? midY - bH : midY;
     ctx.fillStyle = r.gainDollar >= 0 ? '#10B981' : '#EF4444';
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, bW, bH, 3);
-    else ctx.rect(x, y, bW, bH);
+    ctx.roundRect(x, y, bW, bH, 3);
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#64748B';
     ctx.font = '9px Inter,sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(r.ticker, x + bW/2, 92);
+    ctx.fillText(r.ticker, x + bW / 2, 92);
   });
   ctx.strokeStyle = '#1E2D45';
   ctx.lineWidth = 1;
@@ -1829,7 +1688,7 @@ function drawPnlChart(rows) {
   ctx.stroke();
 }
 
-// ── RENDER ──────────────────────────────────────────────────────────────────
+// ── RENDER PRINCIPAL ──────────────────────────────────────────────────────
 function render() {
   computeRows();
   renderKPI();
@@ -1841,17 +1700,46 @@ function render() {
   if (editOpen) renderEditTable();
 }
 
-// ── INICIO ──────────────────────────────────────────────────────────────────
+// ── PERSISTENCIA ──────────────────────────────────────────────────────────
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (d.portfolio && d.portfolio.length > 0) portfolio = d.portfolio;
+    if (d.modules) modules = Object.assign(modules, d.modules);
+    if (d.trdHistory) trdHistory = d.trdHistory;
+    if (d.nextId) nextId = d.nextId;
+    if (d.currency) currency = d.currency;
+    if (d.budget) {
+      budget.ingreso = d.budget.ingreso || 0;
+      budget.split = d.budget.split || 60;
+      budget.history = d.budget.history || [];
+      if (d.budget.gastos) Object.assign(budget.gastos, d.budget.gastos);
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ portfolio, modules, trdHistory, nextId, currency, budget }));
+  } catch (e) { console.warn('No se pudo guardar', e); }
+}
+
+function clearData() {
+  if (!confirm('⚠ ¿Borrar TODOS los datos guardados?')) return;
+  localStorage.removeItem(STORE_KEY);
+  location.reload();
+}
+
+// ── INICIO ────────────────────────────────────────────────────────────────
 (async function init() {
   loadColors();
-  setupDropZone();
   const loaded = loadData();
   
-  if (loaded && portfolio.length > 0) {
-    document.getElementById('file-status').textContent = `✅ Datos cargados (${portfolio.length} posiciones)`;
-    document.getElementById('file-status').style.color = 'var(--green)';
-    document.getElementById('last-sync').textContent = 'Última carga desde localStorage';
-    document.getElementById('last-sync').style.color = 'var(--green)';
+  if (!loaded || portfolio.length === 0) {
+    await syncFromGoogleSheets();
   }
   
   seedPrices();
@@ -1860,6 +1748,7 @@ function render() {
   document.getElementById('loading').style.display = 'none';
   render();
   
+  setInterval(syncFromGoogleSheets, 300000);
   setInterval(fetchAllPrices, 30000);
 })();
 </script>
