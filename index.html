@@ -499,8 +499,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   };
 }
 
-// ── CONFIGURACIÓN DE PRECIOS ─────────────────────────────────────────────
-// Usamos Yahoo Finance (sin API key) y un fallback de tipo de cambio
+// ── CONFIGURACIÓN ─────────────────────────────────────────────────────────
+const STORE_KEY = 'kinesicfx_v1';
 
 // ── DATOS ──────────────────────────────────────────────────────────────────
 let portfolio = [];
@@ -520,18 +520,47 @@ const TOTAL_FIJOS = Object.values(AHORROS_FIJOS).reduce((a,b)=>a+b,0);
 
 let budget = { ingreso: 0, gastos: Object.fromEntries(GASTOS_LABELS.map(g=>[g,0])), split: 60, history: [] };
 
-const STORE_KEY = 'kinesicfx_v1';
+// ── PERSISTENCIA ──────────────────────────────────────────────────────────
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (d.portfolio && d.portfolio.length > 0) portfolio = d.portfolio;
+    if (d.modules) modules = Object.assign(modules, d.modules);
+    if (d.trdHistory) trdHistory = d.trdHistory || [];
+    if (d.nextId) nextId = d.nextId || 1;
+    if (d.currency) currency = d.currency;
+    if (d.budget) {
+      budget.ingreso = d.budget.ingreso || 0;
+      budget.split = d.budget.split || 60;
+      budget.history = d.budget.history || [];
+      if (d.budget.gastos) Object.assign(budget.gastos, d.budget.gastos);
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ portfolio, modules, trdHistory, nextId, currency, budget }));
+  } catch (e) { console.warn('No se pudo guardar', e); }
+}
+
+function clearData() {
+  if (!confirm('⚠ ¿Borrar TODOS los datos guardados?')) return;
+  localStorage.removeItem(STORE_KEY);
+  location.reload();
+}
 
 // ── FUNCIONES DE PRECIOS ──────────────────────────────────────────────────
 async function fetchFX() {
   try {
-    // Usar API que permite CORS
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const d = await r.json();
     if (d.rates?.CLP) fxUSDCLP = d.rates.CLP;
   } catch (e) {
     try {
-      // Fallback: usar cache o valor fijo
       const cached = localStorage.getItem('kinesicfx_fx');
       if (cached) {
         const parsed = JSON.parse(cached);
@@ -539,13 +568,11 @@ async function fetchFX() {
       }
     } catch (e2) {}
   }
-  // Guardar en cache
   localStorage.setItem('kinesicfx_fx', JSON.stringify({ CLP: fxUSDCLP, timestamp: Date.now() }));
 }
 
 async function fetchStockPrice(ticker) {
   try {
-    // Usar Yahoo Finance API (sin API key, permite CORS)
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
     const r = await fetch(url);
     if (!r.ok) return null;
@@ -564,13 +591,12 @@ async function fetchStockPrice(ticker) {
 
 async function fetchCryptoPrice(ticker) {
   try {
-    // CoinGecko API (permite CORS)
     const ids = {
       'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana',
       'BNB': 'binancecoin', 'ADA': 'cardano', 'DOT': 'polkadot',
       'AVAX': 'avalanche-2', 'MATIC': 'matic-network', 'LINK': 'chainlink',
       'UNI': 'uniswap', 'XRP': 'ripple', 'DOGE': 'dogecoin',
-      'LTC': 'litecoin', 'SHIB': 'shiba-inu'
+      'LTC': 'litecoin'
     };
     const id = ids[ticker] || ticker.toLowerCase();
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`;
@@ -597,10 +623,8 @@ async function fetchAllPrices() {
   lbl.textContent = 'ACTUALIZANDO';
   
   try {
-    // Obtener tipo de cambio
     await fetchFX();
     
-    // Obtener precios de acciones
     const stocks = portfolio.filter(p => p.type === 'stock');
     for (const pos of stocks) {
       const result = await fetchStockPrice(pos.ticker);
@@ -610,7 +634,6 @@ async function fetchAllPrices() {
       }
     }
     
-    // Obtener precios de cripto
     const cryptos = portfolio.filter(p => p.type === 'crypto');
     for (const pos of cryptos) {
       const result = await fetchCryptoPrice(pos.ticker);
@@ -682,7 +705,6 @@ function processFile(file) {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       
-      // Buscar la hoja STOCK TRACKER
       let sheetName = 'STOCK TRACKER';
       if (!workbook.SheetNames.includes(sheetName)) {
         sheetName = workbook.SheetNames[0];
@@ -726,7 +748,6 @@ function parseExcelData(jsonData) {
   const stocks = [];
   let modulesData = { apv: 0, rentaFija: 0, trading: 0 };
   
-  // Buscar la fila de encabezados
   let headerRow = null;
   let headerIndex = -1;
   
@@ -784,7 +805,6 @@ function parseExcelData(jsonData) {
   
   console.log('📌 Índices encontrados:', idx);
   
-  // Recorrer todas las filas para encontrar módulos y acciones
   for (let i = 0; i < jsonData.length; i++) {
     const row = jsonData[i];
     if (!row || row.length < 2) continue;
@@ -792,17 +812,14 @@ function parseExcelData(jsonData) {
     const hasData = row.some(cell => cell && String(cell).trim() !== '');
     if (!hasData) continue;
     
-    // Obtener el ticker de la primera columna (columna A)
     let ticker = row[0] ? String(row[0]).trim().toUpperCase() : '';
     if (!ticker) continue;
     
-    // IDENTIFICAR MÓDULOS ESPECIALES (caso insensible)
+    // Módulos especiales
     if (ticker === 'APV') {
       const costVal = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) : 0;
-      // Si no se encontró en la columna de costo, buscar en otras columnas
       let val = costVal;
       if (!val || val === 0) {
-        // Buscar en la misma fila cualquier número grande
         for (let j = 0; j < row.length; j++) {
           const num = parseFloat(row[j]);
           if (num > 1000 && num < 10000000) {
@@ -812,12 +829,11 @@ function parseExcelData(jsonData) {
         }
       }
       modulesData.apv = val || 0;
-      console.log('🏦 APV encontrado:', modulesData.apv, 'fila:', i, row);
+      console.log('🏦 APV encontrado:', modulesData.apv);
       continue;
     }
     
-    if (ticker === 'CRIPTO' || ticker === 'CRIPTO TRACKER' || ticker === 'CRIPTO TRACKER') {
-      // Buscar el valor de cripto en la fila
+    if (ticker === 'CRIPTO' || ticker === 'CRIPTO TRACKER') {
       let val = 0;
       for (let j = 0; j < row.length; j++) {
         const num = parseFloat(row[j]);
@@ -826,16 +842,14 @@ function parseExcelData(jsonData) {
           break;
         }
       }
-      // Si hay un valor, guardarlo como módulo de cripto
       if (val > 0) {
-        // Podemos guardarlo en modulesData.cripto o en rentaFija según corresponda
-        modulesData.rentaFija = val; // Temporal
+        modulesData.rentaFija = val;
         console.log('₿ Cripto encontrado:', val);
       }
       continue;
     }
     
-    if (ticker === 'RENTA FIJA' || ticker === 'RENTA FIJA' || ticker === 'RF') {
+    if (ticker === 'RENTA FIJA' || ticker === 'RF') {
       const costVal = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) : 0;
       let val = costVal;
       if (!val || val === 0) {
@@ -869,13 +883,11 @@ function parseExcelData(jsonData) {
       continue;
     }
     
-    // Saltar filas que no son acciones (como títulos, totales, etc.)
     if (ticker === 'ACTIVO' || ticker === 'SIMBOLO' || ticker === '' || 
         ticker === 'TOTAL' || ticker === 'TOTAL CLP' || ticker === 'TOTAL USD') {
       continue;
     }
     
-    // Intentar parsear como acción
     const shares = (idx.shares >= 0 && idx.shares < row.length) ? parseFloat(row[idx.shares]) || 0 : 0;
     const price = (idx.price >= 0 && idx.price < row.length) ? parseFloat(row[idx.price]) || 0 : 0;
     const cost = (idx.cost >= 0 && idx.cost < row.length) ? parseFloat(row[idx.cost]) || 0 : 0;
@@ -884,7 +896,6 @@ function parseExcelData(jsonData) {
     const roe = (idx.roe >= 0 && idx.roe < row.length) ? parseFloat(row[idx.roe]) || null : null;
     
     if (shares > 0 && (price > 0 || cost > 0)) {
-      // Mapear sector
       let mappedSector = sector;
       const s = sector.toLowerCase();
       if (s.includes('tech')) mappedSector = 'Technology';
@@ -953,16 +964,13 @@ function updateModulesFromSheet(parsed) {
   if (parsed.modules.apv > 0) {
     modules.apv.valor = parsed.modules.apv;
     modules.apv.costo = parsed.modules.apv;
-    console.log('✅ APV actualizado:', modules.apv.valor);
   }
   if (parsed.modules.trading > 0) {
     modules.trd.valor = parsed.modules.trading;
     modules.trd.costo = parsed.modules.trading;
-    console.log('✅ Trading actualizado:', modules.trd.valor);
   }
   if (parsed.modules.rentaFija > 0) {
     window.rentaFijaValor = parsed.modules.rentaFija;
-    console.log('✅ Renta Fija actualizada:', window.rentaFijaValor);
   }
 }
 
@@ -1027,7 +1035,7 @@ function importData(event) {
       const data = JSON.parse(e.target.result);
       if (data.portfolio) portfolio = data.portfolio;
       if (data.modules) modules = data.modules;
-      if (data.trdHistory) trdHistory = data.trdHistory;
+      if (data.trdHistory) trdHistory = data.trdHistory || [];
       if (data.budget) budget = data.budget;
       saveData();
       render();
@@ -1119,7 +1127,763 @@ function renderKPI() {
   });
 }
 
-// El resto de las funciones (renderTable, renderEditTable, calcModuleRent, saveRow, saveModule, addPosition, removePosition, sortBy, setTab, setCurrency, toggleEdit, renderDividends, addTrdEntry, removeTrdEntry, renderTrading, drawTradingChart, calcBudget, renderBudgetGastos, saveBudget, saveMonthSnapshot, renderBudgetHistory, deleteBudgetMonth, renderBudget, renderCharts, drawDonut, drawPnlChart, render, loadData, saveData, clearData) son iguales al código anterior, se mantienen sin cambios.
+function renderTable() {
+  const sorted = [...rows].sort((a, b) => {
+    const av = typeof a[sortKey] === 'string' ? a[sortKey] : (a[sortKey] ?? -Infinity);
+    const bv = typeof b[sortKey] === 'string' ? b[sortKey] : (b[sortKey] ?? -Infinity);
+    if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+    return sortDir * (av - bv);
+  });
+  
+  const totMkt = rows.reduce((s, r) => s + r.marketValue, 0);
+  const totCost = rows.reduce((s, r) => s + r.costBasis, 0);
+  const totGain = totMkt - totCost;
+  const totPct = totCost > 0 ? (totGain / totCost) * 100 : 0;
+  const accVal = rows.reduce((s, r) => s + r.marketValue, 0);
+  const grandTotal = accVal + modules.apv.valor + modules.rac.valor + modules.trd.valor;
+
+  const rowsHTML = sorted.map(r => {
+    const sc = SECTOR_COLORS[r.sector] || '#888';
+    const sh = r.shares < 1 ? fmt(r.shares, 4) : fmt(r.shares, r.shares % 1 === 0 ? 0 : 2);
+    const allocGrand = grandTotal > 0 ? (r.marketValue / grandTotal) * 100 : 0;
+    return `<tr>
+      <td><div class="ticker-cell">${r.ticker}</div><div class="ticker-name">${r.name}</div></td>
+      <td class="bold">${fmtP(r.price)}</td>
+      <td class="${cc(r.change1d)}">${r.change1d >= 0 ? '▲' : '▼'} ${fmt(Math.abs(r.change1d))}%</td>
+      <td class="sub">${fmtP(r.avgCost)}</td>
+      <td>${sh}</td>
+      <td class="sub">${fmtM(r.costBasis)}</td>
+      <td class="bold">${fmtM(r.marketValue)}</td>
+      <td class="${cc(r.gainDollar)} bold">${sg(r.gainDollar)}${fmtM(r.gainDollar)}</td>
+      <td class="${cc(r.gainPct)} bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</td>
+      <td class="amber">${r.annualDiv > 0 ? fmtM(r.annualDiv) : '—'}</td>
+      <td class="amber">${r.divYield > 0 ? fmt(r.divYield) + '%' : '—'}</td>
+      <td><span style="color:${cc(r.gainPct)}">${r.gainPct >= 0 ? '↗' : '↘'}</span></td>
+      <td><span class="badge" style="background:${sc}22;color:${sc}">${r.sector}</span></td>
+      <td class="cyan">${r.roe != null ? fmt(r.roe) + '%' : '—'}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div class="bar-bg"><div class="bar-fill" style="width:${allocGrand}%;background:${sc}"></div></div><span class="sub">${fmt(allocGrand, 1)}%</span></div></td>
+    </tr>`;
+  }).join('');
+
+  const subRow = `<tr style="background:var(--surface)">
+    <td colspan="5" style="color:var(--glow);font-weight:800">▶ TOTAL ACCIONES / CRIPTO</td>
+    <td class="bold">${fmtM(totCost)}</td>
+    <td class="bold">${fmtM(totMkt)}</td>
+    <td class="${cc(totGain)} bold">${sg(totGain)}${fmtM(totGain)}</td>
+    <td class="${cc(totPct)} bold">${sg(totPct)}${fmt(totPct)}%</td>
+    <td colspan="6"></td>
+  </tr>`;
+
+  const modRow = (label, color, m) => {
+    const g = m.valor - m.costo;
+    const pct = m.costo > 0 ? (g / m.costo) * 100 : 0;
+    const alloc = grandTotal > 0 ? (m.valor / grandTotal) * 100 : 0;
+    return `<tr style="background:var(--surface)">
+      <td colspan="5" style="color:${color};font-weight:800">▶ ${label}${m.desc ? ' — ' + m.desc : ''}</td>
+      <td class="bold">${m.costo > 0 ? fmtM(m.costo) : '—'}</td>
+      <td class="bold">${m.valor > 0 ? fmtM(m.valor) : '—'}</td>
+      <td class="${cc(g)} bold">${m.valor > 0 ? (sg(g) + fmtM(g)) : '—'}</td>
+      <td class="${cc(pct)} bold">${m.valor > 0 ? (sg(pct) + fmt(pct) + '%') : '—'}</td>
+      <td colspan="5"></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div class="bar-bg"><div class="bar-fill" style="width:${alloc}%;background:${color}"></div></div><span class="sub">${fmt(alloc, 1)}%</span></div></td>
+    </tr>`;
+  };
+
+  const grandCost = totCost + modules.apv.costo + modules.rac.costo + modules.trd.costo;
+  const grandVal = totMkt + modules.apv.valor + modules.rac.valor + modules.trd.valor;
+  const grandGain = grandVal - grandCost;
+  const grandPct = grandCost > 0 ? (grandGain / grandCost) * 100 : 0;
+  const grandRow = `<tr style="background:var(--surface);border-top:2px solid var(--border)">
+    <td colspan="5" style="color:var(--text);font-weight:900;font-size:13px">▶▶ GRAN TOTAL</td>
+    <td class="bold" style="font-size:13px">${fmtM(grandCost)}</td>
+    <td class="bold" style="font-size:13px;color:var(--glow)">${fmtM(grandVal)}</td>
+    <td class="${cc(grandGain)} bold" style="font-size:13px">${sg(grandGain)}${fmtM(grandGain)}</td>
+    <td class="${cc(grandPct)} bold" style="font-size:13px">${sg(grandPct)}${fmt(grandPct)}%</td>
+    <td colspan="6"></td>
+  </tr>`;
+
+  document.getElementById('table-body').innerHTML =
+    `<tr style="background:var(--surface);color:var(--glow)"><td colspan="15" style="padding:6px 11px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">📊 ACCIONES / CRIPTO</td></tr>` +
+    rowsHTML + subRow +
+    `<tr style="background:var(--surface);color:var(--green)"><td colspan="15" style="padding:6px 11px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">🏦 APV</td></tr>` +
+    modRow('APV', '#10B981', modules.apv) +
+    `<tr style="background:var(--surface);color:var(--purple)"><td colspan="15" style="padding:6px 11px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">🧠 RACIONAL</td></tr>` +
+    modRow('Racional', '#8B5CF6', modules.rac) +
+    `<tr style="background:var(--surface);color:var(--amber)"><td colspan="15" style="padding:6px 11px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">⚡ TRADING</td></tr>` +
+    modRow('Trading', '#F59E0B', modules.trd) +
+    grandRow;
+}
+
+function renderEditTable() {
+  document.getElementById('pos-edit-body').innerHTML = portfolio.map(p => {
+    const opts = ['Technology','Financials','Healthcare','Energy','Telecom','Crypto','Consumer','Industrials'].map(s => `<option value="${s}"${s === p.sector ? ' selected' : ''}>${s}</option>`).join('');
+    return `<tr id="erow-${p.id}">
+      <td><input type="text" id="et-ticker-${p.id}" value="${p.ticker}" style="text-transform:uppercase;width:68px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"/></td>
+      <td><input type="text" id="et-name-${p.id}" value="${p.name}" style="width:130px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"/></td>
+      <td><input type="number" id="et-shares-${p.id}" step="any" value="${p.shares}" style="width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"/></td>
+      <td><input type="number" id="et-cost-${p.id}" step="any" value="${p.avgCost}" style="width:90px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"/></td>
+      <td><input type="number" id="et-div-${p.id}" step="any" value="${p.annualDivPS}" style="width:75px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"/></td>
+      <td><select id="et-type-${p.id}" style="width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none"><option value="stock"${p.type === 'stock' ? ' selected' : ''}>Stock</option><option value="crypto"${p.type === 'crypto' ? ' selected' : ''}>Crypto</option></select></td>
+      <td><select id="et-sector-${p.id}" style="width:110px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:11px;outline:none">${opts}</select></td>
+      <td><button class="btn-save" onclick="saveRow(${p.id})">✓ Guardar</button></td>
+      <td><button class="btn-del-row" onclick="removePosition(${p.id})">✕ Eliminar</button></td>
+    </tr>`;
+  }).join('');
+
+  ['apv', 'rac', 'trd'].forEach(k => {
+    const m = modules[k];
+    document.getElementById(k + '-valor').value = m.valor || '';
+    document.getElementById(k + '-costo').value = m.costo || '';
+    document.getElementById(k + '-desc').value = m.desc || '';
+    calcModuleRent(k);
+  });
+}
+
+function calcModuleRent(k) {
+  const costo = parseFloat(document.getElementById(k + '-costo').value) || 0;
+  const valor = parseFloat(document.getElementById(k + '-valor').value) || 0;
+  const rentEl = document.getElementById(k + '-rent');
+  if (costo > 0 && valor > 0) {
+    const pct = ((valor - costo) / costo) * 100;
+    rentEl.value = pct.toFixed(2);
+    rentEl.style.color = pct >= 0 ? 'var(--green)' : 'var(--red)';
+  } else {
+    rentEl.value = '';
+    rentEl.style.color = 'var(--sub)';
+  }
+}
+
+function saveRow(id) {
+  const p = portfolio.find(x => x.id === id);
+  if (!p) return;
+  p.ticker = document.getElementById(`et-ticker-${id}`).value.trim().toUpperCase() || p.ticker;
+  p.name = document.getElementById(`et-name-${id}`).value.trim() || p.name;
+  p.shares = parseFloat(document.getElementById(`et-shares-${id}`).value) || p.shares;
+  p.avgCost = parseFloat(document.getElementById(`et-cost-${id}`).value) || p.avgCost;
+  p.annualDivPS = parseFloat(document.getElementById(`et-div-${id}`).value) || 0;
+  p.type = document.getElementById(`et-type-${id}`).value;
+  p.sector = document.getElementById(`et-sector-${id}`).value;
+  if (!prices[p.ticker]) prices[p.ticker] = p.avgCost;
+  if (!priceHist[p.ticker]) priceHist[p.ticker] = [p.avgCost];
+  const row = document.getElementById(`erow-${id}`);
+  row.classList.remove('saved-flash');
+  void row.offsetWidth;
+  row.classList.add('saved-flash');
+  saveData();
+  render();
+}
+
+function saveModule(k) {
+  const valor = parseFloat(document.getElementById(k + '-valor').value) || 0;
+  const costo = parseFloat(document.getElementById(k + '-costo').value) || 0;
+  const rent = parseFloat(document.getElementById(k + '-rent').value) || 0;
+  const desc = document.getElementById(k + '-desc').value.trim();
+  modules[k] = { valor, costo, rent, desc };
+  if (k === 'trd' && costo > 0 && trdHistory.length === 0) {
+    trdHistory.push({ fecha: new Date().toISOString().split('T')[0], capital: costo, nota: 'Capital inicial' });
+    if (valor > 0 && valor !== costo) trdHistory.push({ fecha: new Date().toISOString().split('T')[0], capital: valor, nota: 'Capital actual' });
+  }
+  const msg = document.getElementById(k + '-msg');
+  msg.style.color = 'var(--green)';
+  msg.textContent = '✓ Guardado correctamente.';
+  setTimeout(() => msg.textContent = '', 2500);
+  saveData();
+  render();
+}
+
+function addPosition() {
+  const ticker = document.getElementById('e-ticker').value.trim().toUpperCase();
+  const name = document.getElementById('e-name').value.trim() || ticker;
+  const shares = parseFloat(document.getElementById('e-shares').value);
+  const avgCost = parseFloat(document.getElementById('e-cost').value);
+  const divPS = parseFloat(document.getElementById('e-div').value) || 0;
+  const type = document.getElementById('e-type').value;
+  const sector = document.getElementById('e-sector').value;
+  const msg = document.getElementById('add-msg');
+  
+  if (!ticker || isNaN(shares) || isNaN(avgCost)) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '⚠ Ticker, cantidad y costo son obligatorios.';
+    setTimeout(() => msg.textContent = '', 3000);
+    return;
+  }
+  
+  portfolio.push({ id: nextId++, ticker, name, shares, avgCost, annualDivPS: divPS, type, sector });
+  prices[ticker] = avgCost;
+  priceHist[ticker] = [avgCost];
+  ['e-ticker', 'e-name', 'e-shares', 'e-cost', 'e-div'].forEach(id => document.getElementById(id).value = '');
+  msg.style.color = 'var(--green)';
+  msg.textContent = '✓ ' + ticker + ' agregado.';
+  setTimeout(() => msg.textContent = '', 2500);
+  saveData();
+  render();
+}
+
+function removePosition(id) {
+  if (!confirm('¿Eliminar esta posición?')) return;
+  portfolio = portfolio.filter(p => p.id !== id);
+  saveData();
+  render();
+}
+
+function sortBy(k) {
+  if (sortKey === k) sortDir *= -1;
+  else { sortKey = k; sortDir = -1; }
+  renderTable();
+}
+
+function setTab(t) {
+  activeTab = t;
+  ['table', 'charts', 'dividends', 'trading', 'budget'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none');
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['table', 'charts', 'dividends', 'trading', 'budget'][i] === t));
+  render();
+}
+
+function setCurrency(c) {
+  currency = c;
+  document.getElementById('btn-usd').classList.toggle('active', c === 'USD');
+  document.getElementById('btn-clp').classList.toggle('active', c === 'CLP');
+  saveData();
+  render();
+}
+
+function toggleEdit() {
+  editOpen = !editOpen;
+  const panel = document.getElementById('edit-panel');
+  const btn = document.getElementById('btn-edit');
+  panel.style.display = editOpen ? 'block' : 'none';
+  btn.classList.toggle('open', editOpen);
+  btn.textContent = editOpen ? '✓ Cerrar Editor' : '✎ Editar';
+  if (editOpen) renderEditTable();
+}
+
+// ── FUNCIONES DE DIVIDENDOS ──────────────────────────────────────────────
+function renderDividends() {
+  const td = rows.reduce((s, r) => s + r.annualDiv, 0);
+  const tm = rows.reduce((s, r) => s + r.marketValue, 0);
+  const payers = rows.filter(r => r.annualDiv > 0);
+  const best = [...payers].sort((a, b) => b.divYield - a.divYield)[0];
+  document.getElementById('div-total').textContent = fmtM(td);
+  document.getElementById('div-yield-lbl').textContent = 'Rendimiento ' + fmt(tm > 0 ? td / tm * 100 : 0) + '% sobre valor de mercado';
+  document.getElementById('div-monthly').textContent = fmtM(td / 12);
+  document.getElementById('div-quarterly').textContent = fmtM(td / 4);
+  document.getElementById('div-count').textContent = payers.length + ' / ' + rows.length;
+  document.getElementById('div-best').textContent = best ? `${best.ticker} ${fmt(best.divYield)}%` : '—';
+  
+  const sp = [...rows].filter(r => r.annualDiv > 0).sort((a, b) => b.annualDiv - a.annualDiv);
+  document.getElementById('div-bars').innerHTML = sp.map(r => `
+    <div class="alloc-item"><div class="alloc-header"><span class="bold">${r.ticker}</span><span class="amber bold">${fmtM(r.annualDiv)}/año</span><span class="sub">${fmt(r.divYield)}% yield</span></div>
+    <div class="alloc-bar"><div class="alloc-fill" style="width:${td > 0 ? (r.annualDiv / td * 100) : 0}%;background:var(--amber)"></div></div></div>`).join('') +
+    (rows.filter(r => !r.annualDiv).length ? `<div style="font-size:10px;color:var(--muted);margin-top:8px">Sin dividendos: ${rows.filter(r => !r.annualDiv).map(r => r.ticker).join(', ')}</div>` : '');
+  
+  document.getElementById('div-quarters').innerHTML = ['Q1 (Ene–Mar)', 'Q2 (Abr–Jun)', 'Q3 (Jul–Sep)', 'Q4 (Oct–Dic)'].map(q => `
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px">
+    <span class="sub">${q}</span><span class="amber bold">${fmtM(td / 4)}</span></div>`).join('') +
+    `<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:800"><span>TOTAL ANUAL</span><span class="amber">${fmtM(td)}</span></div>`;
+}
+
+// ── FUNCIONES DE TRADING ──────────────────────────────────────────────────
+function addTrdEntry() {
+  const fecha = document.getElementById('trd-fecha').value;
+  const capital = parseFloat(document.getElementById('trd-capital').value);
+  const nota = document.getElementById('trd-nota').value.trim();
+  const msg = document.getElementById('trd-entry-msg');
+  if (!fecha || isNaN(capital) || capital <= 0) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '⚠ Fecha y capital son obligatorios.';
+    setTimeout(() => msg.textContent = '', 3000);
+    return;
+  }
+  trdHistory.push({ fecha, capital, nota });
+  trdHistory.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  modules.trd.valor = trdHistory[trdHistory.length - 1].capital;
+  if (!modules.trd.costo && trdHistory.length === 1) modules.trd.costo = capital;
+  document.getElementById('trd-capital').value = '';
+  document.getElementById('trd-nota').value = '';
+  msg.style.color = 'var(--green)';
+  msg.textContent = '✓ Registro agregado.';
+  setTimeout(() => msg.textContent = '', 2000);
+  saveData();
+  render();
+}
+
+function removeTrdEntry(i) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  trdHistory.splice(i, 1);
+  if (trdHistory.length > 0) modules.trd.valor = trdHistory[trdHistory.length - 1].capital;
+  else modules.trd.valor = 0;
+  saveData();
+  render();
+}
+
+function renderTrading() {
+  const m = modules.trd;
+  const hist = trdHistory;
+  const inicial = m.costo || 0;
+  const actual = hist.length > 0 ? hist[hist.length - 1].capital : (m.valor || 0);
+  const gain = actual - inicial;
+  const pct = inicial > 0 ? (gain / inicial) * 100 : 0;
+
+  document.getElementById('trd-kpi-inicial').textContent = inicial > 0 ? fmtM(inicial) : 'Sin datos';
+  document.getElementById('trd-kpi-inicial-clp').textContent = inicial > 0 && currency === 'USD' ? clpL(inicial) : '';
+  document.getElementById('trd-kpi-actual').textContent = actual > 0 ? fmtM(actual) : 'Sin datos';
+  document.getElementById('trd-kpi-actual-clp').textContent = actual > 0 && currency === 'USD' ? clpL(actual) : '';
+  const ge = document.getElementById('trd-kpi-gain');
+  ge.textContent = inicial > 0 ? (sg(gain) + fmtM(gain)) : '—';
+  ge.className = 'kpi-value ' + (gain >= 0 ? 'green' : 'red');
+  document.getElementById('trd-kpi-gain-clp').textContent = inicial > 0 && currency === 'USD' ? clpL(gain) : '';
+  const pe = document.getElementById('trd-kpi-pct');
+  pe.textContent = inicial > 0 ? (sg(pct) + fmt(pct) + '%') : '—';
+  pe.className = 'kpi-value ' + (pct >= 0 ? 'green' : 'red');
+
+  let bestDelta = -Infinity, worstDelta = Infinity, bestLbl = '—', worstLbl = '—', bestVal = '—', worstVal = '—';
+  for (let i = 1; i < hist.length; i++) {
+    const delta = hist[i].capital - hist[i - 1].capital;
+    const deltaPct = hist[i - 1].capital > 0 ? (delta / hist[i - 1].capital) * 100 : 0;
+    if (delta > bestDelta) { bestDelta = delta; bestLbl = hist[i].fecha; bestVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
+    if (delta < worstDelta) { worstDelta = delta; worstLbl = hist[i].fecha; worstVal = (sg(deltaPct) + fmt(deltaPct) + '%'); }
+  }
+  document.getElementById('trd-kpi-best').textContent = hist.length > 1 ? bestVal : '—';
+  document.getElementById('trd-kpi-best-lbl').textContent = hist.length > 1 ? bestLbl : '';
+  document.getElementById('trd-kpi-worst').textContent = hist.length > 1 ? worstVal : '—';
+  document.getElementById('trd-kpi-worst-lbl').textContent = hist.length > 1 ? worstLbl : '';
+
+  document.getElementById('trd-history-list').innerHTML = hist.length === 0
+    ? '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Sin registros aún</div>'
+    : [...hist].reverse().map((h, ri) => {
+      const realI = hist.length - 1 - ri;
+      const prev = realI > 0 ? hist[realI - 1].capital : null;
+      const delta = prev != null ? h.capital - prev : null;
+      const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)22;font-size:11px">
+        <div><div style="font-weight:700;color:var(--text)">${h.fecha}</div>${h.nota ? `<div style="color:var(--muted);font-size:10px">${h.nota}</div>` : ''}</div>
+        <div style="text-align:right"><div class="bold" style="color:var(--amber)">${fmtM(h.capital)}</div>${delta != null ? `<div class="${cc(delta)}" style="font-size:10px">${sg(delta)}${fmtM(delta)} (${sg(deltaPct)}${fmt(deltaPct)}%)</div>` : '<div style="font-size:10px;color:var(--muted)">Inicial</div>'}</div>
+        <button onclick="removeTrdEntry(${realI})" style="background:#ef444422;border:1px solid #ef444444;color:var(--red);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;margin-left:8px">✕</button>
+      </div>`;
+    }).join('');
+
+  document.getElementById('trd-table-body').innerHTML = hist.length === 0
+    ? `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">Agrega registros para ver el detalle</td></tr>`
+    : hist.map((h, i) => {
+      const prev = i > 0 ? hist[i - 1].capital : null;
+      const delta = prev != null ? h.capital - prev : null;
+      const deltaPct = prev != null && prev > 0 ? ((h.capital - prev) / prev) * 100 : null;
+      return `<tr style="${i % 2 === 0 ? '' : 'background:#0F162388'}">
+        <td style="padding:9px 12px;font-weight:700">${h.fecha}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--amber)">${fmtM(h.capital)}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--sub)">$ ${Math.round(h.capital * fxUSDCLP).toLocaleString('es-CL')}</td>
+        <td style="padding:9px 12px;text-align:right" class="${delta != null ? cc(delta) : 'sub'}">${delta != null ? (sg(delta) + fmtM(delta)) : '—'}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700" class="${deltaPct != null ? cc(deltaPct) : 'sub'}">${deltaPct != null ? (sg(deltaPct) + fmt(deltaPct) + '%') : 'Inicial'}</td>
+        <td style="padding:9px 12px;color:var(--sub)">${h.nota || '—'}</td>
+        <td style="padding:9px 12px;text-align:center"><button onclick="removeTrdEntry(${i})" style="background:#ef444422;border:1px solid #ef444444;color:var(--red);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer">✕</button></td>
+      </tr>`;
+    }).join('');
+
+  const dateInput = document.getElementById('trd-fecha');
+  if (!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
+  
+  drawTradingChart(hist, inicial);
+}
+
+function drawTradingChart(hist, inicial) {
+  const canvas = document.getElementById('trd-chart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  const W = container.clientWidth || 500;
+  const H = 300;
+  
+  canvas.width = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  if (hist.length === 0 && inicial === 0) {
+    ctx.fillStyle = '#475569';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Agrega registros para ver el gráfico', W / 2, H / 2);
+    return;
+  }
+
+  let dataPoints = [];
+  if (inicial > 0) {
+    dataPoints.push({ fecha: 'Inicio', capital: inicial });
+  }
+  hist.forEach(h => {
+    if (dataPoints.length === 0 || dataPoints[dataPoints.length - 1].fecha !== h.fecha) {
+      dataPoints.push({ fecha: h.fecha, capital: h.capital });
+    }
+  });
+
+  if (dataPoints.length < 2) {
+    ctx.fillStyle = '#475569';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Se necesitan al menos 2 puntos para el gráfico', W / 2, H / 2);
+    return;
+  }
+
+  const values = dataPoints.map(d => d.capital);
+  const minVal = Math.min(...values) * 0.97;
+  const maxVal = Math.max(...values) * 1.03;
+  const range = maxVal - minVal || 1;
+
+  const PAD = { top: 20, right: 20, bottom: 40, left: 60 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  ctx.strokeStyle = '#1E2D45';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  for (let i = 0; i <= 5; i++) {
+    const y = PAD.top + chartH * (1 - i / 5);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + chartW, y);
+    ctx.stroke();
+    
+    const val = minVal + (range * i / 5);
+    ctx.fillStyle = '#475569';
+    ctx.font = '9px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(currency === 'CLP' ? '$' + Math.round(val * fxUSDCLP / 1000).toLocaleString('es-CL') + 'k' : '$' + fmt(val, 0), PAD.left - 6, y + 3);
+  }
+  ctx.setLineDash([]);
+
+  const totalPts = dataPoints.length;
+  const points = dataPoints.map((d, i) => {
+    const x = PAD.left + (i / (totalPts - 1)) * chartW;
+    const y = PAD.top + chartH * (1 - (d.capital - minVal) / range);
+    return { x, y, data: d };
+  });
+
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+  grad.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
+  grad.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, PAD.top + chartH);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, PAD.top + chartH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.strokeStyle = '#F59E0B';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  points.forEach((p, i) => {
+    const isLast = i === points.length - 1;
+    const isFirst = i === 0;
+    
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, isLast ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = isLast ? '#F59E0B' : '#F59E0B88';
+    ctx.fill();
+    if (isLast) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    
+    if (totalPts <= 10 || i % Math.ceil(totalPts / 8) === 0 || isLast || isFirst) {
+      ctx.fillStyle = '#64748B';
+      ctx.font = '8px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      const label = p.data.fecha === 'Inicio' ? 'Inicio' : p.data.fecha.slice(5);
+      ctx.fillText(label, p.x, PAD.top + chartH + 14);
+    }
+    
+    if (isLast) {
+      ctx.fillStyle = '#F1F5F9';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(fmtM(p.data.capital), p.x + 10, p.y - 6);
+    }
+  });
+
+  if (inicial > 0) {
+    const baseY = PAD.top + chartH * (1 - (inicial - minVal) / range);
+    ctx.strokeStyle = '#47556966';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, baseY);
+    ctx.lineTo(PAD.left + chartW, baseY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#64748B';
+    ctx.font = '8px Inter, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Base', PAD.left + 4, baseY - 4);
+  }
+}
+
+// ── FUNCIONES DE PRESUPUESTO ──────────────────────────────────────────────
+function calcBudget() {
+  const ingreso = parseInt(document.getElementById('bdg-ingreso-input')?.value) || 0;
+  const split = parseInt(document.getElementById('bdg-split')?.value) || 60;
+  budget.ingreso = ingreso;
+  budget.split = split;
+
+  GASTOS_LABELS.forEach(g => {
+    const el = document.getElementById(`bdg-gasto-${g}`);
+    budget.gastos[g] = el ? (parseInt(el.value) || 0) : 0;
+  });
+
+  const totalGastos = Object.values(budget.gastos).reduce((a, b) => a + b, 0);
+  const disponible = ingreso - totalGastos;
+  const excedente = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
+  const accVar = Math.round(excedente * split / 100);
+  const rfVar = excedente - accVar;
+  const totalAhorros = TOTAL_FIJOS + excedente;
+  const libre = disponible - totalAhorros;
+
+  const clp = n => '$ ' + Math.round(n).toLocaleString('es-CL');
+  const pct = (n, d) => d > 0 ? (n / d * 100).toFixed(1) + '%' : '—';
+
+  document.getElementById('bdg-ingreso').textContent = clp(ingreso);
+  document.getElementById('bdg-gastos').textContent = clp(totalGastos);
+  document.getElementById('bdg-gastos-pct').textContent = pct(totalGastos, ingreso) + ' del ingreso';
+  document.getElementById('bdg-disponible').textContent = clp(disponible);
+  document.getElementById('bdg-ahorros').textContent = clp(totalAhorros);
+  document.getElementById('bdg-ahorros-pct').textContent = pct(totalAhorros, ingreso) + ' del ingreso';
+  document.getElementById('bdg-libre').textContent = clp(libre);
+  document.getElementById('bdg-total-gastos-lbl').textContent = clp(totalGastos);
+  document.getElementById('bdg-total-ahorros-lbl').textContent = clp(totalAhorros);
+  document.getElementById('bdg-acc-var').textContent = clp(accVar);
+  document.getElementById('bdg-rf-var').textContent = clp(rfVar);
+  document.getElementById('bdg-split-lbl').textContent = `${split}% / ${100 - split}%`;
+
+  const libreCard = document.getElementById('bdg-libre-card');
+  const libreMsg = document.getElementById('bdg-libre-msg');
+  const libreBar = document.getElementById('bdg-libre-bar');
+  const libreBig = document.getElementById('bdg-libre-big');
+  libreBig.textContent = clp(libre);
+  if (libre >= SALDO_MINIMO) {
+    libreBig.style.color = 'var(--green)';
+    libreCard.style.border = '1px solid #10b98155';
+    libreMsg.style.color = 'var(--green)';
+    libreMsg.textContent = `✓ Supera el mínimo en ${clp(libre - SALDO_MINIMO)}`;
+    libreBar.style.background = 'var(--green)';
+  } else if (ingreso > 0) {
+    libreBig.style.color = 'var(--red)';
+    libreCard.style.border = '1px solid #ef444455';
+    libreMsg.style.color = 'var(--red)';
+    libreMsg.textContent = `⚠ Bajo el mínimo — faltan ${clp(SALDO_MINIMO - libre)}`;
+    libreBar.style.background = 'var(--red)';
+  } else {
+    libreBig.style.color = 'var(--sub)';
+    libreMsg.textContent = 'Ingresa tu capital mensual para calcular';
+    libreBar.style.background = 'var(--border)';
+  }
+  const barPct = ingreso > 0 ? Math.min(100, libre / ingreso * 100) : 0;
+  libreBar.style.width = barPct + '%';
+}
+
+function renderBudgetGastos() {
+  document.getElementById('bdg-gastos-list').innerHTML = GASTOS_LABELS.map(g => `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:12px;font-weight:700;width:90px;color:var(--text)">${g}</div>
+      <input type="number" id="bdg-gasto-${g}" placeholder="0" value="${budget.gastos[g] || ''}" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:12px;outline:none" oninput="calcBudget()"/>
+      <div style="font-size:10px;color:var(--muted);width:70px;text-align:right" id="bdg-gasto-${g}-lbl">${budget.gastos[g] > 0 ? '$ ' + budget.gastos[g].toLocaleString('es-CL') : ''}</div>
+    </div>`).join('');
+}
+
+function saveBudget() {
+  saveData();
+  const msg = document.createElement('div');
+  msg.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:999';
+  msg.textContent = '✓ Presupuesto guardado';
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 2000);
+}
+
+function saveMonthSnapshot() {
+  const ingreso = budget.ingreso;
+  const totalGastos = Object.values(budget.gastos).reduce((a, b) => a + b, 0);
+  const disponible = ingreso - totalGastos;
+  const split = budget.split;
+  const excedente = Math.max(0, disponible - TOTAL_FIJOS - SALDO_MINIMO);
+  const totalAhorros = TOTAL_FIJOS + excedente;
+  const libre = disponible - totalAhorros;
+  const now = new Date();
+  const mes = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+  budget.history.push({ mes, ingreso, gastos: { ...budget.gastos }, totalGastos, totalAhorros, libre });
+  saveData();
+  renderBudgetHistory();
+}
+
+function renderBudgetHistory() {
+  const el = document.getElementById('bdg-history');
+  if (!budget.history.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Sin historial aún</div>';
+    return;
+  }
+  const clp = n => '$ ' + Math.round(n).toLocaleString('es-CL');
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:left">Mes</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Ingreso</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Gastos</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Ahorros</th>
+      <th style="padding:8px 12px;background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:right">Libre</th>
+      <th style="padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)"></th>
+    </tr></thead>
+    <tbody>${[...budget.history].reverse().map((h, ri) => {
+      const realI = budget.history.length - 1 - ri;
+      const libreOk = h.libre >= SALDO_MINIMO;
+      return `<tr style="${ri % 2 === 0 ? '' : 'background:#0F162388'}">
+        <td style="padding:9px 12px;font-weight:700">${h.mes}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--green);font-weight:700">${clp(h.ingreso)}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--red)">${clp(h.totalGastos)}</td>
+        <td style="padding:9px 12px;text-align:right;color:var(--purple);font-weight:700">${clp(h.totalAhorros)}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:${libreOk ? 'var(--green)' : 'var(--red)'}">${clp(h.libre)}</td>
+        <td style="padding:9px 12px;text-align:center"><button onclick="deleteBudgetMonth(${realI})" style="background:#ef444422;border:1px solid #ef444444;color:var(--red);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer">✕</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function deleteBudgetMonth(i) {
+  if (!confirm('¿Eliminar este mes?')) return;
+  budget.history.splice(i, 1);
+  saveData();
+  renderBudgetHistory();
+}
+
+function renderBudget() {
+  const inEl = document.getElementById('bdg-ingreso-input');
+  if (inEl && budget.ingreso) inEl.value = budget.ingreso;
+  const splitEl = document.getElementById('bdg-split');
+  if (splitEl) splitEl.value = budget.split || 60;
+  renderBudgetGastos();
+  calcBudget();
+  renderBudgetHistory();
+}
+
+// ── FUNCIONES DE CHARTS ──────────────────────────────────────────────────
+function renderCharts() {
+  const accVal = rows.reduce((s, r) => s + r.marketValue, 0);
+  const grandTotal = accVal + modules.apv.valor + modules.rac.valor + modules.trd.valor;
+
+  const segData = [
+    { label: 'Acciones', value: accVal, color: '#60A5FA' },
+    { label: 'APV', value: modules.apv.valor, color: '#10B981' },
+    { label: 'Racional', value: modules.rac.valor, color: '#8B5CF6' },
+    { label: 'Trading', value: modules.trd.valor, color: '#F59E0B' },
+  ].filter(d => d.value > 0);
+  drawDonut('donut-seg', segData, grandTotal);
+  document.getElementById('legend-seg').innerHTML = segData.map(s => `
+    <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(grandTotal > 0 ? s.value / grandTotal * 100 : 0, 1)}%</span>
+    <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
+
+  const sMap = {};
+  rows.forEach(r => sMap[r.sector] = (sMap[r.sector] || 0) + r.marketValue);
+  const sd = Object.entries(sMap).map(([l, v]) => ({ label: l, value: v, color: SECTOR_COLORS[l] || '#888' })).sort((a, b) => b.value - a.value);
+  drawDonut('donut-sector', sd, accVal || 1);
+  document.getElementById('legend-sector').innerHTML = sd.map(s => `
+    <div class="legend-item"><div style="display:flex;align-items:center;gap:6px;flex:1"><div class="legend-dot" style="background:${s.color}"></div><span class="sub" style="font-size:11px">${s.label}</span></div>
+    <span style="color:${s.color};font-weight:700;font-size:11px">${fmt(accVal > 0 ? s.value / accVal * 100 : 0, 1)}%</span>
+    <span style="font-size:10px;color:var(--muted)">${fmtM(s.value)}</span></div>`).join('');
+
+  document.getElementById('alloc-bars').innerHTML = [...rows].sort((a, b) => b.marketValue - a.marketValue).map(r => {
+    const sc = SECTOR_COLORS[r.sector] || '#888';
+    const alloc = grandTotal > 0 ? (r.marketValue / grandTotal) * 100 : 0;
+    return `<div class="alloc-item"><div class="alloc-header"><span style="font-weight:700;color:${sc}">${r.ticker}</span><span class="sub">${fmt(alloc, 1)}% · ${fmtM(r.marketValue)}</span></div><div class="alloc-bar"><div class="alloc-fill" style="width:${alloc}%;background:${sc}"></div></div></div>`;
+  }).join('');
+
+  drawPnlChart(rows);
+  
+  const bg = [...rows].sort((a, b) => b.gainPct - a.gainPct);
+  document.getElementById('top-gainers').innerHTML = bg.slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="green bold">${sg(r.gainPct)}${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+  document.getElementById('top-losers').innerHTML = [...bg].reverse().slice(0, 4).map(r => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px"><span class="bold">${r.ticker}</span><span class="${cc(r.gainPct)} bold">${fmt(r.gainPct)}%</span><span class="sub">${fmtM(r.gainDollar)}</span></div>`).join('');
+}
+
+function drawDonut(id, data, total) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 160, 160);
+  const cx = 80, cy = 80, r = 60, inn = 38;
+  let angle = -Math.PI / 2;
+  data.forEach(d => {
+    const sl = (d.value / (total || 1)) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + inn * Math.cos(angle), cy + inn * Math.sin(angle));
+    ctx.arc(cx, cy, r, angle, angle + sl);
+    ctx.arc(cx, cy, inn, angle + sl, angle, true);
+    ctx.closePath();
+    ctx.fillStyle = d.color;
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    angle += sl;
+  });
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#F1F5F9';
+  ctx.font = 'bold 9px Inter,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('PORTAFOLIO', cx, cy - 4);
+  ctx.fillStyle = '#94A3B8';
+  ctx.font = '8px Inter,sans-serif';
+  ctx.fillText('ASIGNACIÓN', cx, cy + 8);
+}
+
+function drawPnlChart(rows) {
+  const c = document.getElementById('bar-pnl');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.parentElement.clientWidth || 600;
+  c.width = w;
+  ctx.clearRect(0, 0, w, c.height);
+  const sorted = [...rows].sort((a, b) => b.gainDollar - a.gainDollar);
+  const max = Math.max(...sorted.map(r => Math.abs(r.gainDollar)), 1);
+  const bW = Math.max(18, Math.min(40, (w - sorted.length * 8) / sorted.length));
+  const midY = 70;
+  sorted.forEach((r, i) => {
+    const x = i * (bW + 8) + 10, bH = (Math.abs(r.gainDollar) / max) * 55, y = r.gainDollar >= 0 ? midY - bH : midY;
+    ctx.fillStyle = r.gainDollar >= 0 ? '#10B981' : '#EF4444';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, bW, bH, 3);
+    } else {
+      ctx.rect(x, y, bW, bH);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#64748B';
+    ctx.font = '9px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(r.ticker, x + bW / 2, 92);
+  });
+  ctx.strokeStyle = '#1E2D45';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, midY);
+  ctx.lineTo(w, midY);
+  ctx.stroke();
+}
+
+// ── RENDER PRINCIPAL ──────────────────────────────────────────────────────
+function render() {
+  computeRows();
+  renderKPI();
+  if (activeTab === 'table') renderTable();
+  if (activeTab === 'charts') renderCharts();
+  if (activeTab === 'dividends') renderDividends();
+  if (activeTab === 'trading') renderTrading();
+  if (activeTab === 'budget') renderBudget();
+  if (editOpen) renderEditTable();
+}
 
 // ── INICIO ────────────────────────────────────────────────────────────────
 (async function init() {
