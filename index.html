@@ -993,28 +993,6 @@ function importExcelFile(event) {
       portfolio = newPortfolio;
       nextId = maxId + 1;
 
-      // Convertir APV y Renta Fija (CLP) a USD usando el tipo de cambio actual
-      // y actualizar modules.apv y modules.rac respectivamente.
-      // Solo se sobreescribe si el Excel trae un valor > 0.
-      const fx = fxUSDCLP || 920;
-      if (modulesRaw.apv && modulesRaw.apv > 0) {
-        const apvUSD = modulesRaw.apv / fx;
-        // Conservar costo previo si ya había sido editado manualmente; si no, igualar
-        if (!modules.apv.costo || modules.apv.costo === modules.apv.valor) {
-          modules.apv.costo = apvUSD;
-        }
-        modules.apv.valor = apvUSD;
-        modules.apv.desc = modules.apv.desc || 'APV';
-      }
-      if (modulesRaw.rentaFija && modulesRaw.rentaFija > 0) {
-        const racUSD = modulesRaw.rentaFija / fx;
-        if (!modules.rac.costo || modules.rac.costo === modules.rac.valor) {
-          modules.rac.costo = racUSD;
-        }
-        modules.rac.valor = racUSD;
-        modules.rac.desc = modules.rac.desc || 'Renta Fija';
-      }
-
       seedPrices();
       saveData();
       await fetchAllPrices();
