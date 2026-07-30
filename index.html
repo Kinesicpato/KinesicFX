@@ -81,6 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-sync:hover{opacity:.85}
 .btn-sync.amber{background:var(--amber);color:#000}
 .btn-sync.purple{background:var(--purple)}
+.btn-sync.cyan{background:var(--cyan)}
 
 #edit-panel{display:none;margin-bottom:14px}
 .edit-section{background:var(--card);border-radius:12px;padding:16px;margin-bottom:10px}
@@ -190,8 +191,10 @@ canvas { display: block; width: 100%; height: auto; }
       <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:.1em;text-transform:uppercase">⚙️ Configuración</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="syncFromGoogleSheets()" class="btn-sync" style="width:auto">🔄 Sincronizar</button>
+        <button onclick="document.getElementById('import-excel-file').click()" class="btn-sync cyan" style="width:auto">📊 Importar Excel</button>
+        <input type="file" id="import-excel-file" accept=".xlsx,.xls" style="display:none" onchange="importExcelFile(event)"/>
         <button onclick="exportData()" class="btn-sync amber" style="width:auto">📤 Exportar</button>
-        <button onclick="document.getElementById('import-file').click()" class="btn-sync purple" style="width:auto">📥 Importar</button>
+        <button onclick="document.getElementById('import-file').click()" class="btn-sync purple" style="width:auto">📥 Importar Backup</button>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
         <button onclick="applyColors()" style="padding:6px 16px;background:var(--purple);border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">🎨 Aplicar</button>
       </div>
@@ -204,6 +207,9 @@ canvas { display: block; width: 100%; height: auto; }
       </div>
       <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div style="font-size:9px;color:var(--muted);margin-top:4px">Última sincronización: <span id="last-sync" style="color:var(--sub)">Nunca</span></div>
+      </div>
+      <div class="settings-field" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Excel: <span id="last-excel-import" style="color:var(--sub)">Nunca</span></div>
       </div>
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
@@ -458,6 +464,7 @@ canvas { display: block; width: 100%; height: auto; }
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── POLYFILL para roundRect (compatibilidad navegadores) ────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -791,6 +798,68 @@ function updateModulesFromSheet(parsed) {
   if (parsed.modules.rentaFija > 0) {
     window.rentaFijaValor = parsed.modules.rentaFija;
   }
+}
+
+// ── FUNCIONES DE IMPORTACIÓN DESDE EXCEL (hoja "stock tracker") ──────────
+// Solo actualiza la sección de activos (acciones/cripto) del portafolio,
+// respetando el orden de aparición en la hoja de Excel. NO toca APV,
+// Racional, Trading ni Presupuesto — esos módulos se editan manualmente.
+function findStockTrackerSheet(workbook) {
+  const target = workbook.SheetNames.find(name => name.trim().toLowerCase() === 'stock tracker');
+  return target || null;
+}
+
+function importExcelFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('last-excel-import');
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      const sheetName = findStockTrackerSheet(workbook);
+      if (!sheetName) {
+        throw new Error('No se encontró una hoja llamada "stock tracker" en el archivo.');
+      }
+
+      const ws = workbook.Sheets[sheetName];
+      // raw:false -> valores como texto (igual formato que entrega la Google Sheets API)
+      // defval:'' -> celdas vacías no quedan undefined, evita errores de parseo
+      const values = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+
+      const parsed = parseGoogleSheetsData(values);
+
+      if (!parsed || parsed.stocks.length === 0) {
+        throw new Error('No se encontraron posiciones válidas en la hoja "stock tracker".');
+      }
+
+      // Solo reordena/actualiza posiciones (acciones + cripto).
+      // APV, Racional, Trading y Presupuesto quedan intactos.
+      updatePortfolioFromSheet(parsed);
+
+      seedPrices();
+      saveData();
+      await fetchAllPrices();
+      render();
+
+      statusEl.textContent = `✅ ${parsed.stocks.length} posiciones — ${new Date().toLocaleTimeString('es-CL')}`;
+      statusEl.style.color = 'var(--green)';
+    } catch (error) {
+      console.error('Error importando Excel:', error);
+      statusEl.textContent = '❌ Error: ' + error.message;
+      statusEl.style.color = 'var(--red)';
+      alert('No se pudo importar el Excel:\n' + error.message);
+    }
+  };
+  reader.onerror = function() {
+    statusEl.textContent = '❌ Error al leer el archivo';
+    statusEl.style.color = 'var(--red)';
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
 }
 
 // ── FUNCIONES DE COLORES ──────────────────────────────────────────────────
