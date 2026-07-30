@@ -81,7 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display'
 .btn-sync:hover{opacity:.85}
 .btn-sync.amber{background:var(--amber);color:#000}
 .btn-sync.purple{background:var(--purple)}
-.btn-sync.cyan{background:var(--cyan)}
+.btn-sync.cyan{background:#0e7490;color:#fff;border:1px solid var(--cyan)}
 
 #edit-panel{display:none;margin-bottom:14px}
 .edit-section{background:var(--card);border-radius:12px;padding:16px;margin-bottom:10px}
@@ -191,7 +191,7 @@ canvas { display: block; width: 100%; height: auto; }
       <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:.1em;text-transform:uppercase">⚙️ Configuración</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="syncFromGoogleSheets()" class="btn-sync" style="width:auto">🔄 Sincronizar</button>
-        <button onclick="document.getElementById('import-excel-file').click()" class="btn-sync cyan" style="width:auto">📊 Importar Excel</button>
+        <button onclick="document.getElementById('import-excel-file').click()" class="btn-sync" style="width:auto;background:#10B981;color:#fff">📊 Importar Excel</button>
         <input type="file" id="import-excel-file" accept=".xlsx,.xls" style="display:none" onchange="importExcelFile(event)"/>
         <button onclick="exportData()" class="btn-sync amber" style="width:auto">📤 Exportar</button>
         <button onclick="document.getElementById('import-file').click()" class="btn-sync purple" style="width:auto">📥 Importar Backup</button>
@@ -253,6 +253,7 @@ canvas { display: block; width: 100%; height: auto; }
     <button class="tab" onclick="setTab('dividends')">💰 Dividendos</button>
     <button class="tab" onclick="setTab('trading')">⚡ Trading</button>
     <button class="tab" onclick="setTab('budget')">🏠 Presupuesto</button>
+    <button onclick="document.getElementById('import-excel-file').click()" style="padding:7px 14px;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:700;background:#10B981;color:#fff;white-space:nowrap" title="Importar hoja Stock Tracker desde Excel">📊 Excel</button>
     <button class="btn-edit" id="btn-edit" onclick="toggleEdit()">✎ Editar</button>
   </div>
 
@@ -503,7 +504,17 @@ let currency = 'USD', sortKey = 'marketValue', sortDir = -1, activeTab = 'table'
 let isLive = false;
 let rows = [];
 
-const SECTOR_COLORS = {Technology:'#3B82F6',Financials:'#8B5CF6',Healthcare:'#10B981',Energy:'#F59E0B',Telecom:'#06B6D4',Crypto:'#F97316',Consumer:'#EC4899',Industrials:'#6366F1','Real Estate':'#14B8A6'};
+const SECTOR_COLORS = {
+  // Nombres cortos (manual edit / Google Sheets)
+  Technology:'#3B82F6', Financials:'#8B5CF6', Healthcare:'#10B981',
+  Energy:'#F59E0B', Telecom:'#06B6D4', Crypto:'#F97316',
+  Consumer:'#EC4899', Industrials:'#6366F1', 'Real Estate':'#14B8A6',
+  Materials:'#84CC16',
+  // Nombres completos (Excel real)
+  'Information Technology':'#3B82F6', 'Health Care':'#10B981',
+  'Consumer Staples':'#EC4899', 'Consumer Discretionary':'#F472B6',
+  'Communication Services':'#06B6D4', 'Utilities':'#A78BFA',
+};
 
 // ── MODIFICACIÓN: Se agregó "Vacaciones" a la lista de gastos ────────────
 const GASTOS_LABELS = ['Arriendo','Bencina','CAE','Cuentas','Mercadería','Otros','Polla','Vacaciones'];
@@ -800,13 +811,124 @@ function updateModulesFromSheet(parsed) {
   }
 }
 
-// ── FUNCIONES DE IMPORTACIÓN DESDE EXCEL (hoja "stock tracker") ──────────
-// Solo actualiza la sección de activos (acciones/cripto) del portafolio,
-// respetando el orden de aparición en la hoja de Excel. NO toca APV,
-// Racional, Trading ni Presupuesto — esos módulos se editan manualmente.
-function findStockTrackerSheet(workbook) {
-  const target = workbook.SheetNames.find(name => name.trim().toLowerCase() === 'stock tracker');
-  return target || null;
+// ── MAPEO DE SECTORES (Excel → colores del dashboard) ────────────────────
+// Normaliza los nombres de sector que usa el Excel a los que el dashboard reconoce.
+const SECTOR_MAP = {
+  'information technology': 'Technology',
+  'technology': 'Technology',
+  'health care': 'Healthcare',
+  'healthcare': 'Healthcare',
+  'consumer staples': 'Consumer',
+  'consumer discretionary': 'Consumer',
+  'consumer': 'Consumer',
+  'financials': 'Financials',
+  'energy': 'Energy',
+  'industrials': 'Industrials',
+  'materials': 'Industrials',
+  'telecom': 'Telecom',
+  'communication services': 'Telecom',
+  'real estate': 'Real Estate',
+  'crypto': 'Crypto',
+};
+function normalizeSector(raw) {
+  if (!raw || raw === 'Loading...') return 'Technology';
+  return SECTOR_MAP[String(raw).trim().toLowerCase()] || String(raw).trim();
+}
+
+// ── FUNCIONES DE IMPORTACIÓN DESDE EXCEL (hoja "STOCK TRACKER") ──────────
+// Estructura real del Excel:
+//   Fila 1  — título + encabezados cripto (col Q+)
+//   Fila 2  — datos cripto (col Q+), ignorar cols A-P
+//   Fila 3  — HEADERS de acciones: Simbolo, Acciones, Precio, Precio Mercado,
+//              Costo, Valor Mercado, Ganancia en USD, Crecimiento, Tipo Crec,
+//              Dividendos, ..., Sector, ROE, Retorno 3a
+//   Filas 4+ — posiciones (CAT, HSY, ASML … BTC)
+//   Filas ~30-33 — módulos: "Activo"/"Costo" header, luego APV, Renta Fija, Trading
+//
+// Solo actualiza posiciones de acciones/cripto (respeta orden del Excel).
+// NO toca APV, Racional, Trading ni Presupuesto.
+function parseExcelStockTracker(rows) {
+  // Buscar la fila de headers buscando la columna "Simbolo"
+  let headerRowIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const row = rows[i];
+    if (row && row.some(cell => String(cell).trim().toLowerCase() === 'simbolo')) {
+      headerRowIdx = i;
+      break;
+    }
+  }
+  if (headerRowIdx === -1) throw new Error('No se encontró la fila de encabezados (columna "Simbolo") en la hoja STOCK TRACKER.');
+
+  const headers = rows[headerRowIdx].map(h => String(h ?? '').trim());
+  const col = name => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+
+  // Índices de columnas por nombre
+  const iSim  = col('Simbolo');
+  const iAcc  = col('Acciones');
+  const iCost = col('Costo');
+  const iDiv  = col('Dividendos');
+  const iSec  = col('Sector');
+  const iROE  = col('ROE');
+
+  if (iSim === -1 || iAcc === -1 || iCost === -1) {
+    throw new Error('El Excel no tiene las columnas esperadas: Simbolo, Acciones, Costo.');
+  }
+
+  const SKIP = new Set(['simbolo', 'activo', '', 'loading...']);
+
+  const stocks = [];
+  // Posibles módulos embebidos en el Excel (en CLP — se convierten a USD al importar)
+  let modulesRaw = { apv: null, rentaFija: null, trading: null };
+
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row[iSim]) continue;
+
+    const ticker = String(row[iSim]).trim().toUpperCase();
+    if (!ticker || SKIP.has(ticker.toLowerCase())) continue;
+
+    // Detectar filas de módulos (APV, Renta Fija, Trading) — valores en CLP
+    if (ticker === 'APV') {
+      modulesRaw.apv = parseFloat(String(row[iAcc] ?? row[1] ?? '').replace(/[^0-9.-]/g, '')) || null;
+      continue;
+    }
+    if (ticker === 'RENTA FIJA') {
+      modulesRaw.rentaFija = parseFloat(String(row[iAcc] ?? row[1] ?? '').replace(/[^0-9.-]/g, '')) || null;
+      continue;
+    }
+    if (ticker === 'TRADING') {
+      modulesRaw.trading = parseFloat(String(row[iAcc] ?? row[1] ?? '').replace(/[^0-9.-]/g, '')) || null;
+      continue;
+    }
+
+    // Parsear posición normal
+    const shares  = parseFloat(String(row[iAcc]  ?? '').replace(/[^0-9.-]/g, '')) || 0;
+    const avgCost = parseFloat(String(row[iCost] ?? '').replace(/[^0-9.-]/g, '')) || 0;
+    if (shares <= 0 || avgCost <= 0) continue;
+
+    // Col J = "Dividendos" en el Excel = ingreso anual TOTAL (ya × qty).
+    // El portafolio guarda divPS (por acción), así que revertimos:
+    const divTotal = iDiv >= 0 ? (parseFloat(String(row[iDiv] ?? '').replace(/[^0-9.-]/g, '')) || 0) : 0;
+    const divPS    = shares > 0 ? divTotal / shares : 0;
+    const sector   = iSec >= 0 ? normalizeSector(row[iSec]) : 'Technology';
+    // ROE en el Excel viene como decimal (ej: 0.41), lo convertimos a % (41)
+    const roeRaw   = iROE >= 0 ? parseFloat(String(row[iROE] ?? '').replace(/[^0-9.-]/g, '')) : null;
+    const roe      = (roeRaw !== null && !isNaN(roeRaw)) ? roeRaw * 100 : null;
+    const isCrypto = ['BTC','ETH','SOL','BNB','ADA','XRP','DOGE','LTC','LINK','UNI','MATIC','AVAX'].includes(ticker);
+
+    stocks.push({
+      ticker,
+      name: ticker,
+      shares,
+      avgCost,
+      annualDivPS: divPS,
+      type: isCrypto ? 'crypto' : 'stock',
+      sector: isCrypto ? 'Crypto' : sector,
+      roe,
+    });
+  }
+
+  return { stocks, modulesRaw };
 }
 
 function importExcelFile(event) {
@@ -818,40 +940,71 @@ function importExcelFile(event) {
   reader.onload = async function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      // cellDates:false para recibir números en vez de objetos Date en encabezados
+      const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
-      const sheetName = findStockTrackerSheet(workbook);
+      // Buscar hoja "STOCK TRACKER" (insensible a mayúsculas)
+      const sheetName = workbook.SheetNames.find(
+        name => name.trim().toLowerCase() === 'stock tracker'
+      );
       if (!sheetName) {
-        throw new Error('No se encontró una hoja llamada "stock tracker" en el archivo.');
+        throw new Error(
+          'No se encontró una hoja llamada "STOCK TRACKER" en el archivo.\n' +
+          'Hojas disponibles: ' + workbook.SheetNames.join(', ')
+        );
       }
 
       const ws = workbook.Sheets[sheetName];
-      // raw:false -> valores como texto (igual formato que entrega la Google Sheets API)
-      // defval:'' -> celdas vacías no quedan undefined, evita errores de parseo
-      const values = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+      // raw:true para obtener valores numéricos reales (no strings)
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
-      const parsed = parseGoogleSheetsData(values);
+      const { stocks, modulesRaw } = parseExcelStockTracker(rows);
 
-      if (!parsed || parsed.stocks.length === 0) {
-        throw new Error('No se encontraron posiciones válidas en la hoja "stock tracker".');
+      if (stocks.length === 0) {
+        throw new Error(
+          'No se encontraron posiciones válidas en la hoja STOCK TRACKER.\n' +
+          'Verifica que las filas de acciones tengan Simbolo, Acciones y Costo con valores > 0.'
+        );
       }
 
-      // Solo reordena/actualiza posiciones (acciones + cripto).
-      // APV, Racional, Trading y Presupuesto quedan intactos.
-      updatePortfolioFromSheet(parsed);
+      // Reconstruir portafolio respetando el orden del Excel
+      const existingMap = {};
+      portfolio.forEach(p => { existingMap[p.ticker] = p; });
+
+      let maxId = portfolio.length > 0 ? Math.max(...portfolio.map(p => p.id)) : 0;
+      const newPortfolio = stocks.map(stock => {
+        const existing = existingMap[stock.ticker];
+        if (existing) {
+          // Actualizar campos numéricos, conservar type/id/sector ya que el Excel los trae
+          return {
+            ...existing,
+            shares: stock.shares,
+            avgCost: stock.avgCost,
+            annualDivPS: stock.annualDivPS,
+            sector: stock.sector,
+            roe: stock.roe,
+            type: stock.type,
+          };
+        } else {
+          return { ...stock, id: ++maxId };
+        }
+      });
+
+      portfolio = newPortfolio;
+      nextId = maxId + 1;
 
       seedPrices();
       saveData();
       await fetchAllPrices();
       render();
 
-      statusEl.textContent = `✅ ${parsed.stocks.length} posiciones — ${new Date().toLocaleTimeString('es-CL')}`;
+      statusEl.textContent = `✅ ${stocks.length} posiciones importadas — ${new Date().toLocaleTimeString('es-CL')}`;
       statusEl.style.color = 'var(--green)';
     } catch (error) {
       console.error('Error importando Excel:', error);
-      statusEl.textContent = '❌ Error: ' + error.message;
+      statusEl.textContent = '❌ Error: ' + error.message.split('\n')[0];
       statusEl.style.color = 'var(--red)';
-      alert('No se pudo importar el Excel:\n' + error.message);
+      alert('No se pudo importar el Excel:\n\n' + error.message);
     }
   };
   reader.onerror = function() {
