@@ -560,36 +560,39 @@ async function fetchStockPrices() {
 async function fetchCryptoPrices() {
   const cryptos = portfolio.filter(p => p.type === 'crypto');
   if (!cryptos.length) return;
-  
+
   const CRYPTO_IDS = {
     BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
     ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network',
     LINK: 'chainlink', UNI: 'uniswap', XRP: 'ripple', DOGE: 'dogecoin', LTC: 'litecoin'
   };
-  
+
   try {
     const ids = cryptos.map(p => CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase()).join(',');
-    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&price_change_percentage=24h`;
+    const r = await fetch(url);
     const d = await r.json();
-    cryptos.forEach(p => {
-      const id = CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase();
-      if (d[id]?.usd) {
-        prevPrices[p.ticker] = prices[p.ticker] || d[id].usd;
-        prices[p.ticker] = d[id].usd;
-      }
-    });
-  } catch (e) {
-    await Promise.allSettled(cryptos.map(async p => {
-      try {
-        const sym = `BINANCE:${p.ticker}USDT`;
-        const r = await fetch(`${FINNHUB}/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
-        const d = await r.json();
-        if (d.c && d.c > 0) {
-          prevPrices[p.ticker] = prices[p.ticker] || d.pc || d.c;
-          prices[p.ticker] = d.c;
+    if (Array.isArray(d)) {
+      d.forEach(coin => {
+        const pos = cryptos.find(p => (CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase()) === coin.id);
+        if (pos && coin.current_price > 0) {
+          prices[pos.ticker] = coin.current_price;
+          // Guardamos el cambio 24h directamente para usarlo en change1d
+          pos.change24h = coin.price_change_percentage_24h || 0;
         }
-      } catch (e2) {}
-    }));
+      });
+    }
+  } catch (e) {
+    console.warn('CoinGecko markets falló, intentando simple/price', e);
+    try {
+      const ids = cryptos.map(p => CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase()).join(',');
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+      const d = await r.json();
+      cryptos.forEach(p => {
+        const id = CRYPTO_IDS[p.ticker] || p.ticker.toLowerCase();
+        if (d[id]?.usd) prices[p.ticker] = d[id].usd;
+      });
+    } catch (e2) {}
   }
 }
 
@@ -1102,7 +1105,9 @@ function computeRows() {
     const unitCost = pos.shares > 0 ? pos.avgCost / pos.shares : 0;
     const price = prices[pos.ticker] || pos.price || unitCost;
     const prev = prevPrices[pos.ticker] || pos.prevPrice || price;
-    const change1d = prev ? ((price - prev) / prev) * 100 : 0;
+    const change1d = (pos.type === 'crypto' && typeof pos.change24h === 'number')
+  ? pos.change24h
+  : (prev ? ((price - prev) / prev) * 100 : 0);
     const marketValue = price * pos.shares;
     // avgCost = COSTO TOTAL de la posición (columna "Costo" del Excel)
     const costBasis = pos.avgCost;
