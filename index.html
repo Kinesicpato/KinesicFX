@@ -1099,13 +1099,15 @@ function seedPrices() {
 
 function computeRows() {
   rows = portfolio.map(pos => {
-    const price = prices[pos.ticker] || pos.avgCost;
-    const prev = prevPrices[pos.ticker] || price;
+    const unitCost = pos.shares > 0 ? pos.avgCost / pos.shares : 0;
+    const price = prices[pos.ticker] || pos.price || unitCost;
+    const prev = prevPrices[pos.ticker] || pos.prevPrice || price;
     const change1d = prev ? ((price - prev) / prev) * 100 : 0;
     const marketValue = price * pos.shares;
-    const costBasis = pos.avgCost * pos.shares;
+    // avgCost = COSTO TOTAL de la posición (columna "Costo" del Excel)
+    const costBasis = pos.avgCost;
     const gainDollar = marketValue - costBasis;
-    const gainPct = pos.avgCost > 0 ? ((price - pos.avgCost) / pos.avgCost) * 100 : 0;
+    const gainPct = costBasis > 0 ? (gainDollar / costBasis) * 100 : 0;
     const annualDiv = pos.annualDivPS * pos.shares;
     const divYield = price > 0 ? (pos.annualDivPS / price) * 100 : 0;
     return { ...pos, price, prev, change1d, marketValue, costBasis, gainDollar, gainPct, annualDiv, divYield, roe: pos.roe || null };
